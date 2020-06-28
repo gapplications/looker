@@ -1,0 +1,532 @@
+dimension: max_date {
+    label: "Max Date"
+    description: "Max date in the data source"
+    convert_tz: no
+    type: date
+    sql:
+      ( SELECT
+          -- You have to modify the data type if date column is not timestamp
+          MAX(refresh_timestamp)
+        FROM `bigquery_project.dataset.table`
+        -- If the souce table got refersh multiple times in a day,
+        -- you should use WHERE CAST(refresh_timestamp AS DATE) < CURRENT_DATE() instead
+        WHERE CAST(refresh_timestamp AS DATE) <= CURRENT_DATE()
+      ) ;;
+  }
+
+  filter: date_range {
+    view_label: "Period Over Period"
+    type: date
+    convert_tz: no
+  }
+
+  parameter: period_comparison {
+    view_label: "Period Over Period"
+    type: string
+    allowed_value: {
+      label: "Same Period Last Year"
+      value: "last_year"
+    }
+    allowed_value: {
+      label: "Previous Period"
+      value: "previous_period"
+    }
+  }
+
+  parameter: period_select {
+    view_label: "Period Over Period"
+    type: unquoted
+    allowed_value: {
+      label: "Current Week"
+      value: "WEEK"
+    }
+    allowed_value: {
+      label: "Current Month"
+      value: "MONTH"
+    }
+    allowed_value: {
+      label: "Current Quarter"
+      value: "QUARTER"
+    }
+    allowed_value: {
+      label: "Current Year"
+      value: "YEAR"
+    }
+    allowed_value: {
+      label: "Last Week"
+      value: "LAST_WEEK"
+    }
+    allowed_value: {
+      label: "Last Month"
+      value: "LAST_MONTH"
+    }
+    allowed_value: {
+      label: "Last Quarter"
+      value: "LAST_QUARTER"
+    }
+    allowed_value: {
+      label: "Last Year"
+      value: "LAST_YEAR"
+    }
+    allowed_value: {
+      label: "Yesterday"
+      value: "YESTERDAY"
+    }
+    allowed_value: {
+      label: "12 Months Rolling"
+      value: "12_MONTHS"
+    }
+    allowed_value: {
+      label: "Custom Date Range"
+      value: "CUSTOM"
+    }
+    allowed_value: {
+      label: "Custom Date Range - LFL Weeks"
+      value: "CUSTOM_WEEK"
+    }
+  }
+
+  parameter: periodtodate_or_total {
+    view_label: "Period Over Period"
+    type: string
+    allowed_value: {
+      label: "PTD"
+      value: "ptd"
+    }
+    allowed_value: {
+      label: "Total"
+      value: "total"
+    }
+  }
+
+  dimension: is_period_to_date_or_total {
+    view_label: "Period Over Period"
+    type: yesno
+    sql: (CASE
+          WHEN
+            {% condition periodtodate_or_total %} 'total' {% endcondition %}
+            OR
+            {% condition period_select %} 'CUSTOM' {% endcondition %}
+            OR
+            {% condition period_select %} 'CUSTOM_WEEK' {% endcondition %}
+            OR
+            {% condition period_select %} 'LAST_WEEK' {% endcondition %}
+            OR
+            {% condition period_select %} 'LAST_MONTH' {% endcondition %}
+            OR
+            {% condition period_select %} 'LAST_QUARTER' {% endcondition %}
+            OR
+            {% condition period_select %} 'LAST_YEAR' {% endcondition %}
+            OR
+            {% condition period_select %} '12_MONTHS' {% endcondition %}
+            OR
+            {% condition period_select %} 'YESTERDAY' {% endcondition %}
+          THEN
+            1
+          ELSE
+            CASE
+              WHEN
+                {% condition period_select %} 'WEEK' {% endcondition %}
+              THEN
+                CASE
+                  WHEN FORMAT_DATE("%u",${order_timestamp_date})
+                    <= FORMAT_DATE("%u",${max_date})
+                  THEN 1 ELSE 0
+                END
+              WHEN
+                {% condition period_select %} 'MONTH' {% endcondition %}
+              THEN
+                CASE
+                  WHEN (EXTRACT(DAY FROM ${order_timestamp_date}))
+                    <= (EXTRACT(DAY FROM ${max_date}))
+                  THEN 1 ELSE 0
+                END
+              WHEN
+                {% condition period_select %} 'QUARTER' {% endcondition %}
+              THEN
+                CASE
+                  WHEN DATE_DIFF(${order_timestamp_date}, DATE_TRUNC(${order_timestamp_date}, QUARTER), DAY)
+                    <= DATE_DIFF(${max_date}, DATE_TRUNC(${max_date}, QUARTER), DAY)
+                  then 1 ELSE 0
+                END
+              WHEN
+                {% condition period_select %} 'YEAR' {% endcondition %}
+              THEN
+                CASE
+                  WHEN DATE_DIFF(${order_timestamp_date}, DATE_TRUNC(${order_timestamp_date}, YEAR), DAY)
+                    <= DATE_DIFF(${max_date}, DATE_TRUNC(${max_date}, YEAR), DAY)
+                  THEN 1 ELSE 0
+                END
+            END
+        END) = 1;;
+  }
+
+  dimension: periods_ago {
+    view_label: "Period Over Period"
+    type: number
+    sql:
+      -- Replace order_timestamp_date with whatever the date field is in the explore
+      {% if period_comparison._parameter_value == "'last_year'" %}
+        {% if period_select._parameter_value == 'WEEK' %}
+          (CASE
+            WHEN EXTRACT(ISOWEEK FROM CAST(${order_timestamp_date} AS DATE)) = EXTRACT(ISOWEEK FROM CAST(${max_date} AS DATE))
+            THEN (EXTRACT(YEAR FROM CAST(${max_date} AS DATE))) - (EXTRACT(YEAR FROM CAST(${order_timestamp_date} AS DATE)))
+            ELSE NULL
+          END)
+        {% elsif period_select._parameter_value == 'LAST_WEEK' %}
+          (CASE
+            WHEN EXTRACT(ISOWEEK FROM CAST(${order_timestamp_date} AS DATE)) = EXTRACT(ISOWEEK FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},ISOWEEK), INTERVAL 1 DAY)) AS DATE))
+            THEN (EXTRACT(YEAR FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},ISOWEEK), INTERVAL 1 DAY)) AS DATE))) - (EXTRACT(YEAR FROM CAST(${order_timestamp_date} AS DATE)))
+            ELSE NULL
+          END)
+        {% elsif period_select._parameter_value == 'MONTH' %}
+          (CASE
+            WHEN
+              EXTRACT(MONTH FROM CAST(${order_timestamp_date} AS DATE)) = EXTRACT(MONTH FROM CAST(${max_date} AS DATE))
+            THEN (EXTRACT(YEAR FROM CAST(${max_date} AS DATE))) - (EXTRACT(YEAR FROM CAST(${order_timestamp_date} AS DATE)))
+            ELSE NULL
+          END)
+        {% elsif period_select._parameter_value == 'LAST_MONTH' %}
+          (CASE
+            WHEN EXTRACT(MONTH FROM CAST(${order_timestamp_date} AS DATE)) = EXTRACT(MONTH FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},MONTH), INTERVAL 1 DAY)) AS DATE))
+            THEN (EXTRACT(YEAR FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},MONTH), INTERVAL 1 DAY)) AS DATE))) - (EXTRACT(YEAR FROM CAST(${order_timestamp_date} AS DATE)))
+            ELSE NULL
+          END)
+        {% elsif period_select._parameter_value == 'QUARTER' %}
+          (CASE
+            WHEN
+              EXTRACT(QUARTER FROM CAST(${order_timestamp_date} AS DATE)) = EXTRACT(QUARTER FROM CAST(${max_date} AS DATE))
+            THEN (EXTRACT(YEAR FROM CAST(${max_date} AS DATE))) - (EXTRACT(YEAR FROM CAST(${order_timestamp_date} AS DATE)))
+            ELSE NULL
+          END)
+        {% elsif period_select._parameter_value == 'LAST_QUARTER' %}
+          (CASE
+            WHEN EXTRACT(QUARTER FROM CAST(${order_timestamp_date} AS DATE)) = EXTRACT(QUARTER FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},QUARTER), INTERVAL 1 DAY)) AS DATE))
+            THEN (EXTRACT(YEAR FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},QUARTER), INTERVAL 1 DAY)) AS DATE))) - (EXTRACT(YEAR FROM CAST(${order_timestamp_date} AS DATE)))
+            ELSE NULL
+          END)
+        {% elsif period_select._parameter_value == 'YEAR' %}
+          DATE_DIFF( ${max_date}, ${order_timestamp_date}, YEAR)
+        {% elsif period_select._parameter_value == 'LAST_YEAR' %}
+          DATE_DIFF(DATE_SUB(DATE_TRUNC(${max_date},YEAR), INTERVAL 1 DAY), ${order_timestamp_date}, YEAR)
+        {% elsif period_select._parameter_value == '12_MONTHS' %}
+          CAST(FLOOR(DATE_DIFF(${max_date}, ${order_timestamp_date}, DAY)/365) AS INT64)
+        {% elsif period_select._parameter_value == 'YESTERDAY' %}
+          (CASE
+            WHEN EXTRACT(DAYOFWEEK FROM CAST(${order_timestamp_date} AS DATE)) = EXTRACT(DAYOFWEEK FROM CAST(${max_date} AS DATE))
+              AND EXTRACT(WEEK FROM CAST(${order_timestamp_date} AS DATE)) = EXTRACT(WEEK FROM CAST(${max_date} AS DATE))
+            THEN (EXTRACT(YEAR FROM CAST(${max_date} AS DATE))) - (EXTRACT(YEAR FROM CAST(${order_timestamp_date} AS DATE)))
+            ELSE NULL
+          END)
+        {% elsif period_select._parameter_value == 'CUSTOM' %}
+          (CASE
+            WHEN
+              CAST(${order_timestamp_date} AS DATE) >= CAST({% date_end date_range %} AS DATE)
+            THEN
+              -CAST(
+                CASE
+                  WHEN (DATE_DIFF( CAST(${order_timestamp_date} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)/365)
+                    -FLOOR(DATE_DIFF( CAST(${order_timestamp_date} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)/365)
+                      <=
+                      (DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)/365)
+                  THEN
+                    FLOOR(DATE_DIFF( CAST(${order_timestamp_date} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)/365)
+                  ELSE NULL
+                  END
+              AS INT64)
+            ELSE
+              CAST(
+              CASE
+                  WHEN ROUND(((DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST(${order_timestamp_date} AS DATE), DAY)/365)
+                      -FLOOR(DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST(${order_timestamp_date} AS DATE), DAY)/365)),8)
+                      <=
+                      ROUND((DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)/365),8)
+                  THEN
+                    FLOOR(DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST(${order_timestamp_date} AS DATE), DAY)/
+                    (CASE
+                      WHEN DATE_DIFF( CAST({% date_end date_range %} AS DATE),CAST({% date_start date_range %} AS DATE), DAY)< 365
+                      THEN 365
+                      ELSE DATE_DIFF( CAST({% date_end date_range %} AS DATE),CAST({% date_start date_range %} AS DATE), DAY)
+                    END))
+                  ELSE NULL
+                  END
+              AS INT64)
+            END)
+          {% elsif period_select._parameter_value == 'CUSTOM_WEEK' %}
+            CAST(
+              CASE
+                  WHEN EXTRACT(ISOWEEK FROM CAST(${order_timestamp_date} AS DATE))
+                      = EXTRACT(ISOWEEK FROM CAST({% date_end date_range %} AS DATE))
+                      OR
+                      EXTRACT(ISOWEEK FROM CAST(${order_timestamp_date} AS DATE))
+                      = EXTRACT(ISOWEEK FROM CAST({% date_start date_range %} AS DATE))
+                  THEN
+                    EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE))
+                    -
+                    EXTRACT(YEAR FROM CAST(${order_timestamp_date} AS DATE))
+                  ELSE NULL
+                  END
+               AS INT64)
+        {% endif %}
+      {% elsif period_comparison._parameter_value == "'previous_period'" %}
+        {% if period_select._parameter_value == 'YEAR' %}
+          DATE_DIFF( ${max_date}, ${order_timestamp_date}, YEAR)
+        {% elsif period_select._parameter_value == 'LAST_YEAR' %}
+          DATE_DIFF(DATE_SUB(DATE_TRUNC(${max_date},YEAR), INTERVAL 1 DAY), ${order_timestamp_date}, YEAR)
+        {% elsif period_select._parameter_value == 'MONTH' %}
+          DATE_DIFF( ${max_date}, ${order_timestamp_date}, MONTH)
+        {% elsif period_select._parameter_value == 'LAST_MONTH' %}
+          DATE_DIFF( DATE_SUB(DATE_TRUNC(${max_date},MONTH), INTERVAL 1 DAY), ${order_timestamp_date}, MONTH)
+        {% elsif period_select._parameter_value == 'QUARTER' %}
+          DATE_DIFF( ${max_date}, ${order_timestamp_date}, QUARTER)
+        {% elsif period_select._parameter_value == 'LAST_QUARTER' %}
+          DATE_DIFF( DATE_SUB(DATE_TRUNC(${max_date},QUARTER), INTERVAL 1 DAY), ${order_timestamp_date}, QUARTER)
+        {% elsif period_select._parameter_value == 'WEEK' %}
+          DATE_DIFF( ${max_date}, ${order_timestamp_date}, ISOWEEK)
+        {% elsif period_select._parameter_value == 'LAST_WEEK' %}
+          DATE_DIFF( DATE_SUB(DATE_TRUNC(${max_date},ISOWEEK), INTERVAL 1 DAY), ${order_timestamp_date}, ISOWEEK)
+        {% elsif period_select._parameter_value == 'YESTERDAY' %}
+          DATE_DIFF(${max_date}, ${order_timestamp_date}, DAY)
+        {% elsif period_select._parameter_value == '12_MONTHS' %}
+          CAST(FLOOR(DATE_DIFF(${max_date}, ${order_timestamp_date}, DAY)/365) AS INT64)
+        {% elsif period_select._parameter_value == 'CUSTOM' %}
+          (CASE
+            WHEN
+              CAST(${order_timestamp_date} AS DATE) >= CAST({% date_end date_range %} AS DATE)
+            THEN
+              -CAST(CEILING(
+                DATE_DIFF( CAST(${order_timestamp_date} AS DATE), CAST({% date_end date_range %} AS DATE), DAY)
+                /
+                (DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)+1)
+                ) AS INT64)
+            ELSE
+              CAST(FLOOR(
+                DATE_DIFF( CAST({% date_end date_range %} AS DATE),CAST(${order_timestamp_date} AS DATE), DAY)
+                /
+                (DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)+1)
+                ) AS INT64)
+            END)
+        {% elsif period_select._parameter_value == 'CUSTOM_WEEK' %}
+            DATE_DIFF( CAST({% date_start date_range %} AS DATE) , CAST(${order_timestamp_date} AS DATE) , WEEK)
+          {% endif %}
+      {% endif %}
+    ;;
+
+    html:
+            {% if period_select._parameter_value == 'WEEK'
+              or period_select._parameter_value == 'LAST_WEEK'
+              or period_select._parameter_value == 'CUSTOM_WEEK' %}
+              {{ order_timestamp_week._rendered_value }}
+            {% elsif period_select._parameter_value == 'MONTH'
+              or period_select._parameter_value == 'LAST_MONTH' %}
+              {{ order_timestamp_month._rendered_value }}
+            {% elsif period_select._parameter_value == 'QUARTER'
+              or period_select._parameter_value == 'LAST_QUARTER' %}
+              {{ order_timestamp_quarter._rendered_value }}
+            {% elsif period_select._parameter_value == 'YEAR'
+              or period_select._parameter_value == 'LAST_YEAR' %}
+              {{ order_timestamp_year._rendered_value }}
+            {% elsif period_select._parameter_value == 'YESTERDAY' %}
+              {{ order_timestamp_date._rendered_value }}
+            {% else %}
+              {{value}}
+            {% endif %}
+          ;;
+  }
+  
+  
+
+  dimension: periods_ago_end_of_period {
+    type: number
+    sql:
+        {% if period_comparison._parameter_value == "'last_year'" %}
+          {% if period_select._parameter_value == 'WEEK' %}
+            (CASE
+              WHEN EXTRACT(ISOWEEK FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(ISOWEEK FROM CAST(${max_date} AS DATE))
+              AND EXTRACT(DAYOFWEEK FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(DAYOFWEEK FROM CAST(${max_date} AS DATE))
+              THEN (EXTRACT(YEAR FROM CAST(${max_date} AS DATE))) - (EXTRACT(YEAR FROM CAST(${fulldate_date} AS DATE)))
+              ELSE NULL
+             END)
+          {% elsif period_select._parameter_value == 'LAST_WEEK' %}
+            (CASE
+              WHEN EXTRACT(ISOWEEK FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(ISOWEEK FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},ISOWEEK), INTERVAL 1 DAY)) AS DATE))
+              AND EXTRACT(DAYOFWEEK FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(DAYOFWEEK FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},ISOWEEK), INTERVAL 1 DAY)) AS DATE))
+              THEN (EXTRACT(YEAR FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},ISOWEEK), INTERVAL 1 DAY)) AS DATE))) - (EXTRACT(YEAR FROM CAST(${fulldate_date} AS DATE)))
+              ELSE NULL
+             END)
+          {% elsif period_select._parameter_value == 'MONTH' %}
+            (CASE
+              WHEN
+                EXTRACT(MONTH FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(MONTH FROM CAST(${max_date} AS DATE))
+                AND EXTRACT(DAY FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(DAY FROM CAST(${max_date} AS DATE))
+              THEN (EXTRACT(YEAR FROM CAST(${max_date} AS DATE))) - (EXTRACT(YEAR FROM CAST(${fulldate_date} AS DATE)))
+              ELSE NULL
+             END)
+          {% elsif period_select._parameter_value == 'LAST_MONTH' %}
+            (CASE
+              WHEN EXTRACT(MONTH FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(MONTH FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},MONTH), INTERVAL 1 DAY)) AS DATE))
+                AND EXTRACT(DAY FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(DAY FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},MONTH), INTERVAL 1 DAY)) AS DATE))
+              THEN (EXTRACT(YEAR FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},MONTH), INTERVAL 1 DAY)) AS DATE))) - (EXTRACT(YEAR FROM CAST(${fulldate_date} AS DATE)))
+              ELSE NULL
+             END)
+          {% elsif period_select._parameter_value == 'QUARTER' %}
+            (CASE
+              WHEN
+                EXTRACT(QUARTER FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(QUARTER FROM CAST(${max_date} AS DATE))
+                AND EXTRACT(DAYOFYEAR FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(DAYOFYEAR FROM CAST(${max_date} AS DATE))
+              THEN (EXTRACT(YEAR FROM CAST(${max_date} AS DATE))) - (EXTRACT(YEAR FROM CAST(${fulldate_date} AS DATE)))
+              ELSE NULL
+             END)
+          {% elsif period_select._parameter_value == 'LAST_QUARTER' %}
+            (CASE
+              WHEN EXTRACT(QUARTER FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(QUARTER FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},QUARTER), INTERVAL 1 DAY)) AS DATE))
+                AND EXTRACT(DAYOFYEAR FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(DAYOFYEAR FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},QUARTER), INTERVAL 1 DAY)) AS DATE))
+              THEN (EXTRACT(YEAR FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},QUARTER), INTERVAL 1 DAY)) AS DATE))) - (EXTRACT(YEAR FROM CAST(${fulldate_date} AS DATE)))
+              ELSE NULL
+             END)
+          {% elsif period_select._parameter_value == 'YEAR'
+            or period_select._parameter_value == '12_MONTHS' %}
+            CASE
+              WHEN
+                EXTRACT(DAYOFYEAR FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(DAYOFYEAR FROM CAST(${max_date} AS DATE))
+              THEN
+                DATE_DIFF( ${max_date}, ${fulldate_date}, YEAR)
+            END
+          {% elsif period_select._parameter_value == 'LAST_YEAR' %}
+            CASE
+              WHEN
+                EXTRACT(DAYOFYEAR FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(DAYOFYEAR FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},YEAR), INTERVAL 1 DAY)) AS DATE))
+              THEN
+                DATE_DIFF(DATE_SUB(DATE_TRUNC(${max_date},YEAR), INTERVAL 1 DAY), ${fulldate_date}, YEAR)
+            END
+          {% elsif period_select._parameter_value == 'YESTERDAY' %}
+            (CASE
+              WHEN EXTRACT(DAY FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(DAY FROM CAST(${max_date} AS DATE))
+                AND EXTRACT(MONTH FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(MONTH FROM CAST(${max_date} AS DATE))
+              THEN (EXTRACT(YEAR FROM CAST(${max_date} AS DATE))) - (EXTRACT(YEAR FROM CAST(${fulldate_date} AS DATE)))
+              ELSE NULL
+             END)
+          {% elsif period_select._parameter_value == 'CUSTOM' %}
+            CASE
+              WHEN
+                EXTRACT(DAYOFYEAR FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(DAYOFYEAR FROM CAST({% date_end date_range %} AS DATE))
+              THEN
+                DATE_DIFF( CAST({% date_end date_range %} AS DATE), ${fulldate_date}, YEAR)
+            END
+          {% elsif period_select._parameter_value == 'CUSTOM_WEEK' %}
+            CAST(
+              CASE
+                  WHEN EXTRACT(ISOWEEK FROM CAST(${fulldate_date} AS DATE))
+                      = EXTRACT(ISOWEEK FROM CAST({% date_end date_range %} AS DATE))
+                      AND
+                      EXTRACT(DAYOFWEEK FROM CAST(${fulldate_date} AS DATE))
+                      = EXTRACT(DAYOFWEEK FROM CAST({% date_end date_range %} AS DATE))
+                  THEN
+                    DATE_DIFF( CAST({% date_end date_range %} AS DATE), ${fulldate_date}, YEAR)
+                  ELSE NULL
+                  END
+               AS INT64)
+          {% endif %}
+        {% elsif period_comparison._parameter_value == "'previous_period'" %}
+          {% if period_select._parameter_value == 'YEAR'
+            or period_select._parameter_value == '12_MONTHS' %}
+            CASE
+              WHEN
+                EXTRACT(DAYOFYEAR FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(DAYOFYEAR FROM CAST(${max_date} AS DATE))
+              THEN
+                DATE_DIFF( ${max_date}, ${fulldate_date}, YEAR)
+            END
+          {% elsif period_select._parameter_value == 'LAST_YEAR' %}
+            CASE
+              WHEN
+                EXTRACT(DAYOFYEAR FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(DAYOFYEAR FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},YEAR), INTERVAL 1 DAY)) AS DATE))
+              THEN
+                DATE_DIFF(DATE_SUB(DATE_TRUNC(${max_date},YEAR), INTERVAL 1 DAY), ${fulldate_date}, YEAR)
+            END
+          {% elsif period_select._parameter_value == 'MONTH' %}
+            (CASE
+              WHEN
+                EXTRACT(DAY FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(DAY FROM CAST(${max_date} AS DATE))
+              THEN (
+                    (EXTRACT(YEAR FROM CAST(${max_date} AS DATE))*100)
+                    +EXTRACT(MONTH FROM CAST(${max_date} AS DATE))
+                  )
+                  -
+                  (
+                    (EXTRACT(YEAR FROM ${fulldate_date} )*100)
+                    +EXTRACT(MONTH FROM ${fulldate_date})
+                  )
+              ELSE NULL
+             END)
+          {% elsif period_select._parameter_value == 'LAST_MONTH' %}
+            (CASE
+              WHEN
+                EXTRACT(DAY FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(DAY FROM CAST(${max_date} AS DATE))
+              THEN (
+                    (EXTRACT(YEAR FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},MONTH), INTERVAL 1 DAY)) AS DATE))*100)
+                    +EXTRACT(MONTH FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},MONTH), INTERVAL 1 DAY)) AS DATE))
+                  )
+                  -
+                  (
+                    (EXTRACT(YEAR FROM ${fulldate_date} )*100)
+                    +EXTRACT(MONTH FROM ${fulldate_date})
+                  )
+              ELSE NULL
+             END)
+          {% elsif period_select._parameter_value == 'QUARTER' %}
+            -- DATE_DIFF( ${max_date}, ${fulldate_date}, QUARTER)
+          {% elsif period_select._parameter_value == 'LAST_QUARTER' %}
+            -- DATE_DIFF( DATE_SUB(DATE_TRUNC(${max_date},QUARTER), INTERVAL 1 DAY), ${fulldate_date}, QUARTER)
+          {% elsif period_select._parameter_value == 'WEEK' %}
+            (CASE
+              WHEN
+                EXTRACT(DAYOFWEEK FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(DAYOFWEEK FROM CAST(${max_date} AS DATE))
+              THEN (
+                    (EXTRACT(YEAR FROM CAST(${max_date} AS DATE))*100)
+                    +EXTRACT(ISOWEEK FROM CAST(${max_date} AS DATE))
+                  )
+                  -
+                  (
+                    (EXTRACT(YEAR FROM ${fulldate_date} )*100)
+                    +EXTRACT(ISOWEEK FROM ${fulldate_date})
+                  )
+              ELSE NULL
+             END)
+          {% elsif period_select._parameter_value == 'LAST_WEEK' %}
+            (CASE
+              WHEN
+                EXTRACT(DAYOFWEEK FROM CAST(${fulldate_date} AS DATE)) = EXTRACT(DAYOFWEEK FROM CAST(${max_date} AS DATE))
+              THEN (
+                    (EXTRACT(YEAR FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},ISOWEEK), INTERVAL 1 DAY)) AS DATE))*100)
+                    +EXTRACT(ISOWEEK FROM CAST(TIMESTAMP(DATE_SUB(DATE_TRUNC(${max_date},ISOWEEK), INTERVAL 1 DAY)) AS DATE))
+                  )
+                  -
+                  (
+                    (EXTRACT(YEAR FROM ${fulldate_date} )*100)
+                    +EXTRACT(ISOWEEK FROM ${fulldate_date})
+                  )
+              ELSE NULL
+             END)
+          {% elsif period_select._parameter_value == 'YESTERDAY' %}
+            DATE_DIFF(${max_date}, ${fulldate_date}, DAY)
+          {% elsif period_select._parameter_value == 'CUSTOM' %}
+            /* (CASE
+              WHEN
+                CAST(${fulldate_date} AS DATE) >= CAST({% date_end date_range %} AS DATE)
+              THEN
+                -CAST(CEILING(
+                  DATE_DIFF( CAST(${fulldate_date} AS DATE), CAST({% date_end date_range %} AS DATE), DAY)
+                  /
+                  (DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)+1)
+                  ) AS INT64)
+               ELSE
+                 CAST(FLOOR(
+                  DATE_DIFF( CAST({% date_end date_range %} AS DATE),CAST(${fulldate_date} AS DATE), DAY)
+                  /
+                  (DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)+1)
+                  ) AS INT64)
+              END) */
+          {% endif %}
+        {% endif %}
+           ;;
+  }
