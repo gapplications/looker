@@ -1,0 +1,50 @@
+  parameter: measure_select {
+    type: unquoted
+    allowed_value: {
+      label: "Total GTV"
+      value: "gtv"
+    }
+    allowed_value: {
+      label: "Unique User Count"
+      value: "userid"
+    }
+  }
+
+  measure: dynamic_measure_gbp {
+    type: number
+    value_format_name: gbp
+    label_from_parameter: measure_select
+    sql: {% if measure_select._parameter_value == 'gtv' %}
+            sum( ${TABLE}.{% parameter measure_select %} )
+         {% elsif measure_select._parameter_value == 'userid' %}
+            count( distinct ${TABLE}.{% parameter measure_select %} )
+         {% endif %} ;;
+    hidden: yes
+  }
+
+  measure: dynamic_measure_integer {
+    type: number
+    value_format_name: decimal_0
+    label_from_parameter: measure_select
+    sql: {% if measure_select._parameter_value == 'gtv' %}
+            sum( ${TABLE}.{% parameter measure_select %} )
+         {% elsif measure_select._parameter_value == 'userid' %}
+            count( distinct ${TABLE}.{% parameter measure_select %} )
+         {% endif %} ;;
+    hidden: yes
+  }
+
+  measure: dynamic_measure {
+    type: number
+    label_from_parameter: measure_select
+    sql:  {% if measure_select._parameter_value == 'gtv' %}
+            ${dynamic_measure_gbp}
+          {% elsif measure_select._parameter_value == 'userid' %}
+            ${dynamic_measure_integer}
+          {% endif %};;
+    html: {% if measure_select._parameter_value == 'gtv' %}
+            {{ dynamic_measure_gbp._rendered_value }}
+          {% elsif measure_select._parameter_value == 'userid' %}
+            {{ dynamic_measure_integer._rendered_value }}
+          {% endif %};;
+  }
