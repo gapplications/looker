@@ -1,0 +1,56 @@
+  dimension: farfetch_logo_and_dynamic_title {
+    sql: 0 ;;
+    html:<link rel="stylesheet" href="https://cdn-static.farfetch-contents.com/v2-31-19092-71-sg-toggle-on/static/css/bundlecss/web-fonts.min.css">
+          <table style="height: 100%; width: 100%; vertical-align: middle; display: inline-block;">
+            <tr>
+              <td style="width: 20%; float: left; padding: 20px;"><img src="https://cdn-static.farfetch-contents.com/v2-31-19092-71-sg-toggle-on/static/images/bobLogo.svg" style="width: 100%;"  /></td>
+              <td style="width: 45%; float: left;  padding: 20px; font-weight: 250; font-family: Polaris, sans-serif !important; vertical-align: middle;">{{ header_title_noquote._value }}</td>
+              <td style="width: 30%; float: right; padding: 20px; font-weight: 150; font-family: Polaris, sans-serif !important;"><span style=" font-family: Polaris-Bold, sans-serif !important;">/</span> <span>Marketing Analytics</span></td>
+              <td style="width: 5%; text-align: right;">
+                <a href="https://farfetch.eu.looker.com/dashboards/2747">
+                  <img src="https://image.flaticon.com/icons/svg/69/69524.svg" style="width: 50%;"/>
+                </a>
+              </td>
+            </tr>
+          </table>
+    ;;
+
+    }
+
+    dimension: farfetch_logo_and_dynamic_title_with_date {
+      sql: 0;;
+      html:<link rel="stylesheet" href="https://cdn-static.farfetch-contents.com/v2-31-19092-71-sg-toggle-on/static/css/bundlecss/web-fonts.min.css">
+        <table style="height: 100%; width: 100%;">
+          <tr>
+            <td style="width:20%; padding:20px;" rowspan="2"><img src="image_reference_url" style="width: 100%;"/></td>
+            <td style="width:60%; padding:10px; font-size: 2.5vw; font-weight: 500; font-family: Polaris, sans-serif !important;">{{ header_title_noquote._value }}</td>
+            <td style="width:20%; padding:10px; font-family: Polaris, sans-serif !important;"><span style=" font-family: Polaris-Bold, sans-serif !important;">/</span> <span>Team Name Here</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight: 300; font-size: 1.5vw; font-family: Polaris, sans-serif !important;">Data up to date as of:
+               {% if max_date_up_to_date._value == 1 %}
+                 <span style="font-weight: 300; font-family: Polaris, sans-serif !important; color: black;">{{ max_date._value }}</span>
+               {% else %}
+                 <span style="font-weight: 300; font-family: Polaris, sans-serif !important; color: red;">{{ max_date._value }}</span>
+               {% endif %}
+            </td>
+            <td style="text-align: right;">
+              <a href="homepage_dashboard_link">
+                <img src="https://image.flaticon.com/icons/svg/69/69524.svg" style="width: 10%;"/>
+              </a>
+            </td>
+          </tr>
+        </table>
+    ;;
+
+    }
+
+    parameter: header_title {
+      type: string
+      default_value: "Use the Header Title parameter to change this"
+    }
+
+    dimension: header_title_noquote {
+      sql: {{ header_title._parameter_value }} ;;
+      hidden: yes
+    }
