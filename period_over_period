@@ -530,3 +530,44 @@ dimension: max_date {
         {% endif %}
            ;;
   }
+  
+  measure: percentage_through_period {
+    type: number
+    value_format_name: percent_1
+    sql: {% if period_select._parameter_value == 'YEAR' %}
+            EXTRACT(DAYOFYEAR FROM ${max_date})
+            /
+            EXTRACT(DAYOFYEAR FROM DATE_SUB(
+                DATE_TRUNC(DATE_ADD(${max_date}, INTERVAL 1 YEAR), YEAR)
+                , INTERVAL 1 DAY))
+          {% elsif period_select._parameter_value == 'QUARTER' %}
+            DATE_DIFF(${max_date}, DATE_TRUNC(${max_date}, QUARTER), DAY)
+            /
+            DATE_DIFF(
+              DATE_SUB(DATE_TRUNC(DATE_ADD(${max_date}, INTERVAL 1 QUARTER), QUARTER), INTERVAL 1 DAY)
+              , DATE_TRUNC(${max_date}, QUARTER), DAY)
+          {% elsif period_select._parameter_value == 'MONTH' %}
+            EXTRACT(DAY FROM ${max_date})
+            /
+            EXTRACT(DAY FROM DATE_SUB(
+                DATE_TRUNC(DATE_ADD(${max_date}, INTERVAL 1 MONTH), MONTH)
+                , INTERVAL 1 DAY))
+          {% elsif period_select._parameter_value == 'WEEK' %}
+            CASE
+              WHEN EXTRACT(DAYOFWEEK FROM ${max_date}) = 1
+              THEN 7
+              ELSE (EXTRACT(DAYOFWEEK FROM ${max_date}) - 1)
+            END
+            /
+            7
+          {% elsif period_select._parameter_value == 'CUSTOM' %}
+            EXTRACT(DAY FROM CAST({% date_end date_range %} AS DATE))
+            /
+            EXTRACT(DAY FROM DATE_SUB(
+                DATE_TRUNC(DATE_ADD(CAST({% date_end date_range %} AS DATE), INTERVAL 1 MONTH), MONTH)
+                , INTERVAL 1 DAY))
+          {% else %}
+            1
+          {% endif %}
+        ;;
+  }
