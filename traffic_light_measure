@@ -1,0 +1,44 @@
+# Traffic Light measure example
+  # Use this on standard measures, like averages or percentages
+
+  parameter: measure_benchmark {
+    type: number
+    label: "Measure Benchmark"
+    default_value: "1000"
+  }
+
+  measure: measure_benchmark_measure {
+    type: number
+    sql: {% parameter measure_benchmark %} ;;
+    group_label: "Benchmark Parameter Measures"
+    hidden: yes
+  }
+
+  measure: measure_tracking {
+    type: number
+    sql: CASE
+          WHEN ${measure} >= ${measure_benchmark_measure}
+          THEN 1
+          WHEN ${measure} >= (${measure_benchmark_measure} * 0.9)
+          THEN 0.5
+          ELSE 0
+        END;;
+    hidden: yes
+  }
+
+  measure: traffic_light_measure {
+    type: number
+    sql: ${measure} ;;
+    value_format_name: usd_0
+    group_label: "Traffic Light Measures"
+    html:
+      {% if measure_tracking._value == 1 %}
+        <p style="color: black; background-color: #3e9389; font-size:100%; text-align:center">{{ rendered_value }}</p>
+      {% elsif measure_tracking._value == 0.5 %}
+        <p style="color: black; background-color: #e09a5d; font-size:100%; text-align:center">{{ rendered_value }}</p>
+      {% else %}
+        <p style="color: black; background-color: #933e43; font-size:100%; text-align:center">{{ rendered_value }}</p>
+      {% endif %}
+    ;;
+    label: "Traffic Light Measure"
+  }
