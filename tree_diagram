@@ -1,0 +1,116 @@
+
+
+  measure: tree_diagram {
+    sql: '1' ;;
+    html:
+      <html>
+        <table style="undefined;table-layout: fixed; width: 612px">
+        <colgroup>
+        <col style="width: 68px">
+        <col style="width: 68px">
+        <col style="width: 68px">
+        <col style="width: 85px">
+        <col style="width: 34px">
+        <col style="width: 85px">
+        <col style="width: 68px">
+        <col style="width: 68px">
+        <col style="width: 68px">
+        </colgroup>
+        <tbody>
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td style="border: 2px solid #000000; font-size:2vw;" colspan="3"><center><b><u>Measure 1</b></u></center></td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td style="border: 2px solid #000000; font-size:2vw;" colspan="3"><center>{{ measure_1_chosen_period._rendered_value }}</center></td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td style="border: 2px solid #000000; font-size:2vw;" colspan="3">
+              <center>
+               {% if measure_1_PoP_Growth_indicator._value == 1 %}
+                 <img src="https://image.flaticon.com/icons/svg/325/325002.svg" height=25 width=25>
+                 <span style="color: black;">{{ measure_1_PoP_Growth._rendered_value }}</span>
+               {% else %}
+                 <img src="https://image.flaticon.com/icons/svg/325/325088.svg" height=25 width=25>
+                 <span style="color: red;">{{ measure_1_PoP_Growth._rendered_value }}</span>
+               {% endif %}
+               PoP
+              </center>
+              </td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td style="border-left: 2px solid #000000;border-right: 2px solid #000000;"></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td style="border: 2px solid #000000; font-size:2vw;" colspan="3"><center><b><u>Measure 2</b></u></center></td>
+            <td></td>
+            <td style="border-left: 2px solid #000000;border-right: 2px solid #000000;"></td>
+            <td></td>
+            <td style="border: 2px solid #000000; font-size:2vw;" colspan="3"><center><b><u>Measure 3</b></u></center></td>
+          </tr>
+          <tr>
+            <td style="border: 2px solid #000000; font-size:2vw;" colspan="3"><center>{{ measure_2_chosen_period._rendered_value }}</center></td>
+            <td style="border-top: 2px solid #000000;"></td>
+            <td></td>
+            <td style="border-top: 2px solid #000000;"></td>
+            <td style="border: 2px solid #000000; font-size:2vw;" colspan="3"><center>{{ measure_3_chosen_period._rendered_value }}</center></td>
+          </tr>
+          <tr>
+            <td style="border: 2px solid #000000; font-size:2vw;" colspan="3">
+              <center>
+               {% if measure_2_PoP_Growth_indicator._value == 1 %}
+                 <img src="https://image.flaticon.com/icons/svg/325/325002.svg" height=25 width=25>
+                 <span style="color: black;">{{ measure_2_PoP_Growth._rendered_value }}</span>
+               {% else %}
+                 <img src="https://image.flaticon.com/icons/svg/325/325088.svg" height=25 width=25>
+                 <span style="color: red;">{{ measure_2_PoP_Growth._rendered_value }}</span>
+               {% endif %}
+               PoP
+              </center>
+              </td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td style="border: 2px solid #000000; font-size:2vw;" colspan="3">
+              <center>
+               {% if measure_3_PoP_Growth_indicator._value == 1 %}
+                 <img src="https://image.flaticon.com/icons/svg/325/325002.svg" height=25 width=25>
+                 <span style="color: black;">{{ measure_3_PoP_Growth._rendered_value }}</span>
+               {% else %}
+                 <img src="https://image.flaticon.com/icons/svg/325/325088.svg" height=25 width=25>
+                 <span style="color: red;">{{ measure_3_PoP_Growth._rendered_value }}</span>
+               {% endif %}
+               PoP
+              </center>
+             </td>
+          </tr>
+        </tbody>
+        </table>
+      </html>
+    ;;
+  }
