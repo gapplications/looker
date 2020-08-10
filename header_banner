@@ -1,6 +1,6 @@
-  dimension: farfetch_logo_and_dynamic_title {
+  dimension: logo_and_dynamic_title {
     sql: 0 ;;
-    html:<link rel="stylesheet" href="https://cdn-static.farfetch-contents.com/v2-31-19092-71-sg-toggle-on/static/css/bundlecss/web-fonts.min.css">
+    html:
           <table style="height: 100%; width: 100%; vertical-align: middle; display: inline-block;">
             <tr>
               <td style="width: 20%; float: left; padding: 20px;"><img src="https://cdn-static.farfetch-contents.com/v2-31-19092-71-sg-toggle-on/static/images/bobLogo.svg" style="width: 100%;"  /></td>
@@ -17,9 +17,9 @@
 
     }
 
-    dimension: farfetch_logo_and_dynamic_title_with_date {
+    dimension: logo_and_dynamic_title_with_date {
       sql: 0;;
-      html:<link rel="stylesheet" href="https://cdn-static.farfetch-contents.com/v2-31-19092-71-sg-toggle-on/static/css/bundlecss/web-fonts.min.css">
+      html:
         <table style="height: 100%; width: 100%;">
           <tr>
             <td style="width:20%; padding:20px;" rowspan="2"><img src="image_reference_url" style="width: 100%;"/></td>
