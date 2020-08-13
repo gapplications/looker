@@ -102,63 +102,44 @@ dimension: max_date {
   dimension: is_period_to_date_or_total {
     view_label: "Period Over Period"
     type: yesno
-    sql: (CASE
-          WHEN
-            {% condition periodtodate_or_total %} 'total' {% endcondition %}
-            OR
-            {% condition period_select %} 'CUSTOM' {% endcondition %}
-            OR
-            {% condition period_select %} 'CUSTOM_WEEK' {% endcondition %}
-            OR
-            {% condition period_select %} 'LAST_WEEK' {% endcondition %}
-            OR
-            {% condition period_select %} 'LAST_MONTH' {% endcondition %}
-            OR
-            {% condition period_select %} 'LAST_QUARTER' {% endcondition %}
-            OR
-            {% condition period_select %} 'LAST_YEAR' {% endcondition %}
-            OR
-            {% condition period_select %} '12_MONTHS' {% endcondition %}
-            OR
-            {% condition period_select %} 'YESTERDAY' {% endcondition %}
-          THEN
-            1
-          ELSE
-            CASE
-              WHEN
-                {% condition period_select %} 'WEEK' {% endcondition %}
-              THEN
-                CASE
-                  WHEN FORMAT_DATE("%u",${order_timestamp_date})
-                    <= FORMAT_DATE("%u",${max_date})
-                  THEN 1 ELSE 0
-                END
-              WHEN
-                {% condition period_select %} 'MONTH' {% endcondition %}
-              THEN
-                CASE
-                  WHEN (EXTRACT(DAY FROM ${order_timestamp_date}))
-                    <= (EXTRACT(DAY FROM ${max_date}))
-                  THEN 1 ELSE 0
-                END
-              WHEN
-                {% condition period_select %} 'QUARTER' {% endcondition %}
-              THEN
-                CASE
-                  WHEN DATE_DIFF(${order_timestamp_date}, DATE_TRUNC(${order_timestamp_date}, QUARTER), DAY)
-                    <= DATE_DIFF(${max_date}, DATE_TRUNC(${max_date}, QUARTER), DAY)
-                  then 1 ELSE 0
-                END
-              WHEN
-                {% condition period_select %} 'YEAR' {% endcondition %}
-              THEN
-                CASE
-                  WHEN DATE_DIFF(${order_timestamp_date}, DATE_TRUNC(${order_timestamp_date}, YEAR), DAY)
-                    <= DATE_DIFF(${max_date}, DATE_TRUNC(${max_date}, YEAR), DAY)
-                  THEN 1 ELSE 0
-                END
-            END
-        END) = 1;;
+    sql: 
+        {% if periodtodate_or_total._parameter_value == 'total'
+        or period_select._parameter_value == 'CUSTOM'
+        or period_select._parameter_value == 'CUSTOM_WEEK'
+        or period_select._parameter_value == 'LAST_WEEK'
+        or period_select._parameter_value == 'LAST_MONTH'
+        or period_select._parameter_value == 'LAST_QUARTER'
+        or period_select._parameter_value == 'LAST_YEAR'
+        or period_select._parameter_value == '12_MONTHS'
+        or period_select._parameter_value == 'YESTERDAY' %}
+          1
+      {% elsif period_select._parameter_value == 'WEEK' %}
+          CASE
+            WHEN FORMAT_DATE("%u",${order_timestamp_date})
+              <= FORMAT_DATE("%u",${max_date})
+            THEN 1 ELSE 0
+          END
+      {% elsif period_select._parameter_value == 'MONTH' %}
+          CASE
+            WHEN (EXTRACT(DAY FROM ${order_timestamp_date}))
+              <= (EXTRACT(DAY FROM ${max_date}))
+            THEN 1 ELSE 0
+          END
+      {% elsif period_select._parameter_value == 'QUARTER' %}
+          CASE
+            WHEN DATE_DIFF(${order_timestamp_date}, DATE_TRUNC(${order_timestamp_date}, QUARTER), DAY)
+              <= DATE_DIFF(${max_date}, DATE_TRUNC(${max_date}, QUARTER), DAY)
+            then 1 ELSE 0
+          END
+      {% elsif period_select._parameter_value == 'YEAR' %}
+          CASE
+            WHEN DATE_DIFF(${order_timestamp_date}, DATE_TRUNC(${order_timestamp_date}, YEAR), DAY)
+              <= DATE_DIFF(${max_date}, DATE_TRUNC(${max_date}, YEAR), DAY)
+            THEN 1 ELSE 0
+          END
+      {% endif %}
+      = 1
+    ;;
   }
 
   dimension: periods_ago {
