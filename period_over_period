@@ -191,7 +191,13 @@ dimension: max_date {
         {% elsif period_select._parameter_value == 'LAST_YEAR' %}
           DATE_DIFF(DATE_SUB(DATE_TRUNC(${max_date},YEAR), INTERVAL 1 DAY), ${order_timestamp_date}, YEAR)
         {% elsif period_select._parameter_value == '12_MONTHS' %}
-          CAST(FLOOR(DATE_DIFF(${max_date}, ${order_timestamp_date}, DAY)/365) AS INT64)
+          CAST(FLOOR(DATE_DIFF(${max_date}, ${order_timestamp_date}, DAY)/
+              CASE
+                WHEN (MOD(${order_timestamp_year},4) = 0 AND MOD(${order_timestamp_year},100) <> 0)
+                  OR MOD(${order_timestamp_year},400) = 0
+                THEN 366
+                ELSE 365
+              END) AS INT64)
         {% elsif period_select._parameter_value == 'YESTERDAY' %}
           (CASE
             WHEN EXTRACT(DAYOFWEEK FROM CAST(${order_timestamp_date} AS DATE)) = EXTRACT(DAYOFWEEK FROM CAST(${max_date} AS DATE))
@@ -206,27 +212,81 @@ dimension: max_date {
             THEN
               -CAST(
                 CASE
-                  WHEN (DATE_DIFF( CAST(${order_timestamp_date} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)/365)
-                    -FLOOR(DATE_DIFF( CAST(${order_timestamp_date} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)/365)
+                  WHEN (DATE_DIFF( CAST(${order_timestamp_date} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)/
+                      CASE
+                        WHEN (MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),4) = 0 AND MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),100) <> 0)
+                          OR MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),400) = 0
+                        THEN 366
+                        ELSE 365
+                      END)
+                    -FLOOR(DATE_DIFF( CAST(${order_timestamp_date} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)/
+                      CASE
+                        WHEN (MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),4) = 0 AND MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),100) <> 0)
+                          OR MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),400) = 0
+                        THEN 366
+                        ELSE 365
+                      END)
                       <=
-                      (DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)/365)
+                      (DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)/
+                      CASE
+                        WHEN (MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),4) = 0 AND MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),100) <> 0)
+                          OR MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),400) = 0
+                        THEN 366
+                        ELSE 365
+                      END)
                   THEN
-                    FLOOR(DATE_DIFF( CAST(${order_timestamp_date} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)/365)
+                    FLOOR(DATE_DIFF( CAST(${order_timestamp_date} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)/
+                      CASE
+                        WHEN (MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),4) = 0 AND MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),100) <> 0)
+                          OR MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),400) = 0
+                        THEN 366
+                        ELSE 365
+                      END)
                   ELSE NULL
                   END
               AS INT64)
             ELSE
               CAST(
               CASE
-                  WHEN ROUND(((DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST(${order_timestamp_date} AS DATE), DAY)/365)
-                      -FLOOR(DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST(${order_timestamp_date} AS DATE), DAY)/365)),8)
+                  WHEN ROUND(((DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST(${order_timestamp_date} AS DATE), DAY)/
+                      CASE
+                        WHEN (MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),4) = 0 AND MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),100) <> 0)
+                          OR MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),400) = 0
+                        THEN 366
+                        ELSE 365
+                      END)
+                      -FLOOR(DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST(${order_timestamp_date} AS DATE), DAY)/
+                      CASE
+                        WHEN (MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),4) = 0 AND MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),100) <> 0)
+                          OR MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),400) = 0
+                        THEN 366
+                        ELSE 365
+                      END)),8)
                       <=
-                      ROUND((DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)/365),8)
+                      ROUND((DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST({% date_start date_range %} AS DATE), DAY)/
+                      CASE
+                        WHEN (MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),4) = 0 AND MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),100) <> 0)
+                          OR MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),400) = 0
+                        THEN 366
+                        ELSE 365
+                      END),8)
                   THEN
                     FLOOR(DATE_DIFF( CAST({% date_end date_range %} AS DATE), CAST(${order_timestamp_date} AS DATE), DAY)/
                     (CASE
-                      WHEN DATE_DIFF( CAST({% date_end date_range %} AS DATE),CAST({% date_start date_range %} AS DATE), DAY)< 365
-                      THEN 365
+                      WHEN DATE_DIFF( CAST({% date_end date_range %} AS DATE),CAST({% date_start date_range %} AS DATE), DAY)< 
+                      CASE
+                        WHEN (MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),4) = 0 AND MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),100) <> 0)
+                          OR MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),400) = 0
+                        THEN 366
+                        ELSE 365
+                      END
+                      THEN 
+                      CASE
+                        WHEN (MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),4) = 0 AND MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),100) <> 0)
+                          OR MOD(EXTRACT(YEAR FROM CAST({% date_start date_range %} AS DATE)),400) = 0
+                        THEN 366
+                        ELSE 365
+                      END
                       ELSE DATE_DIFF( CAST({% date_end date_range %} AS DATE),CAST({% date_start date_range %} AS DATE), DAY)
                     END))
                   ELSE NULL
@@ -269,7 +329,13 @@ dimension: max_date {
         {% elsif period_select._parameter_value == 'YESTERDAY' %}
           DATE_DIFF(${max_date}, ${order_timestamp_date}, DAY)
         {% elsif period_select._parameter_value == '12_MONTHS' %}
-          CAST(FLOOR(DATE_DIFF(${max_date}, ${order_timestamp_date}, DAY)/365) AS INT64)
+          CAST(FLOOR(DATE_DIFF(${max_date}, ${order_timestamp_date}, DAY)/
+              CASE
+                WHEN (MOD(${order_timestamp_year},4) = 0 AND MOD(${order_timestamp_year},100) <> 0)
+                  OR MOD(${order_timestamp_year},400) = 0
+                THEN 366
+                ELSE 365
+              END) AS INT64)
         {% elsif period_select._parameter_value == 'CUSTOM' %}
           (CASE
             WHEN
