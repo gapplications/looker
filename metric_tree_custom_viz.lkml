@@ -19,7 +19,7 @@ view: kpi_tree {
       month_num,
       day_of_year
     ]
-    sql: ${TABLE}.date ;;
+    sql: TIMESTAMP(${TABLE}.date) ;;
   }
 
   dimension: measure {
