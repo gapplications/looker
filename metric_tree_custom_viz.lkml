@@ -1,7 +1,7 @@
 #### EXAMPLE FOR METRIC TREE VISUALISATION ####
 
-view: commercial_tree_diagram {
-  sql_table_name: #########
+view: kpi_tree {
+  sql_table_name: `#########`
     ;;
 
   dimension_group: date {
@@ -42,6 +42,12 @@ view: commercial_tree_diagram {
     sql: ${TABLE}.parent_measure ;;
   }
 
+  dimension: description {
+    type: string
+    # sql: ${TABLE}.description ;;
+    sql: 'Dummy Description' ;;
+  }
+
   measure: single_value {
     type: sum
     sql: ${TABLE}.single_value ;;
@@ -55,6 +61,167 @@ view: commercial_tree_diagram {
   measure: denominator {
     type: sum
     sql: ${TABLE}.denominator ;;
+  }
+
+  measure: measure_value_gbp {
+    type: number
+    sql:
+      CASE
+        WHEN ${value_calc} = "sum" THEN SUM(${TABLE}.single_value)
+        WHEN ${value_calc} = "average" THEN (SUM(${TABLE}.numerator) / NULLIF(SUM(${TABLE}.denominator),0))
+      END
+      ;;
+    value_format_name: gbp
+    hidden: yes
+  }
+
+  measure: measure_value_gbp_0 {
+    type: number
+    sql:
+      CASE
+        WHEN ${value_calc} = "sum" THEN SUM(${TABLE}.single_value)
+        WHEN ${value_calc} = "average" THEN (SUM(${TABLE}.numerator) / NULLIF(SUM(${TABLE}.denominator),0))
+      END
+      ;;
+    value_format_name: gbp_0
+    hidden: yes
+  }
+
+  measure: measure_value_decimal_0 {
+    type: number
+    sql:
+      CASE
+        WHEN ${value_calc} = "sum" THEN SUM(${TABLE}.single_value)
+        WHEN ${value_calc} = "average" THEN (SUM(${TABLE}.numerator) / NULLIF(SUM(${TABLE}.denominator),0))
+      END
+      ;;
+    value_format_name: decimal_0
+    hidden: yes
+  }
+
+  measure: measure_value_decimal_1 {
+    type: number
+    sql:
+      CASE
+        WHEN ${value_calc} = "sum" THEN SUM(${TABLE}.single_value)
+        WHEN ${value_calc} = "average" THEN (SUM(${TABLE}.numerator) / NULLIF(SUM(${TABLE}.denominator),0))
+      END
+      ;;
+    value_format_name: decimal_1
+    hidden: yes
+  }
+
+  measure: measure_value_decimal_2 {
+    type: number
+    sql:
+      CASE
+        WHEN ${value_calc} = "sum" THEN SUM(${TABLE}.single_value)
+        WHEN ${value_calc} = "average" THEN (SUM(${TABLE}.numerator) / NULLIF(SUM(${TABLE}.denominator),0))
+      END
+      ;;
+    value_format_name: decimal_2
+    hidden: yes
+  }
+
+  measure: measure_value_percent_0 {
+    type: number
+    sql:
+      CASE
+        WHEN ${value_calc} = "sum" THEN SUM(${TABLE}.single_value)
+        WHEN ${value_calc} = "average" THEN (SUM(${TABLE}.numerator) / NULLIF(SUM(${TABLE}.denominator),0))
+      END
+      ;;
+    value_format_name: percent_0
+    hidden: yes
+  }
+
+  measure: measure_value_percent_1 {
+    type: number
+    sql:
+      CASE
+        WHEN ${value_calc} = "sum" THEN SUM(${TABLE}.single_value)
+        WHEN ${value_calc} = "average" THEN (SUM(${TABLE}.numerator) / NULLIF(SUM(${TABLE}.denominator),0))
+      END
+      ;;
+    value_format_name: percent_1
+    hidden: yes
+  }
+
+  measure: measure_value_percent_2 {
+    type: number
+    sql:
+      CASE
+        WHEN ${value_calc} = "sum" THEN SUM(${TABLE}.single_value)
+        WHEN ${value_calc} = "average" THEN (SUM(${TABLE}.numerator) / NULLIF(SUM(${TABLE}.denominator),0))
+      END
+      ;;
+    value_format_name: percent_2
+    hidden: yes
+  }
+
+  measure: measure_value_percent_3 {
+    type: number
+    sql:
+      CASE
+        WHEN ${value_calc} = "sum" THEN SUM(${TABLE}.single_value)
+        WHEN ${value_calc} = "average" THEN (SUM(${TABLE}.numerator) / NULLIF(SUM(${TABLE}.denominator),0))
+      END
+      ;;
+    value_format_name: percent_3
+    hidden: yes
+  }
+
+  measure: measure_value_percent_4 {
+    type: number
+    sql:
+      CASE
+        WHEN ${value_calc} = "sum" THEN SUM(${TABLE}.single_value)
+        WHEN ${value_calc} = "average" THEN (SUM(${TABLE}.numerator) / NULLIF(SUM(${TABLE}.denominator),0))
+      END
+      ;;
+    value_format_name: percent_4
+    hidden: yes
+  }
+
+  measure: measure_value {
+    type: number
+    sql:  CASE
+          WHEN ${value_number_format} = 'gbp' THEN ${measure_value_gbp}
+          WHEN ${value_number_format} = 'gbp_0' THEN ${measure_value_gbp_0}
+          WHEN ${value_number_format} = 'decimal_0' THEN ${measure_value_decimal_0}
+          WHEN ${value_number_format} = 'decimal_1' THEN ${measure_value_decimal_1}
+          WHEN ${value_number_format} = 'decimal_2' THEN ${measure_value_decimal_2}
+          WHEN ${value_number_format} = 'percent_0' THEN ${measure_value_percent_0}
+          WHEN ${value_number_format} = 'percent_1' THEN ${measure_value_percent_1}
+          WHEN ${value_number_format} = 'percent_2' THEN ${measure_value_percent_2}
+          WHEN ${value_number_format} = 'percent_3' THEN ${measure_value_percent_3}
+          WHEN ${value_number_format} = 'percent_4' THEN ${measure_value_percent_4}
+         END;;
+    html: {% if value_number_format._value == 'gbp' %}
+            {{ measure_value_gbp._rendered_value }}
+          {% elsif value_number_format._value == 'gbp_0' %}
+            {{ measure_value_gbp_0._rendered_value }}
+          {% elsif value_number_format._value == 'decimal_0' %}
+            {{ measure_value_decimal_0._rendered_value }}
+          {% elsif value_number_format._value == 'decimal_1' %}
+            {{ measure_value_decimal_1._rendered_value }}
+          {% elsif value_number_format._value == 'decimal_2' %}
+            {{ measure_value_decimal_2._rendered_value }}
+          {% elsif value_number_format._value == 'percent_0' %}
+            {{ measure_value_percent_0._rendered_value }}
+          {% elsif value_number_format._value == 'percent_1' %}
+            {{ measure_value_percent_1._rendered_value }}
+          {% elsif value_number_format._value == 'percent_2' %}
+            {{ measure_value_percent_2._rendered_value }}
+          {% elsif value_number_format._value == 'percent_3' %}
+            {{ measure_value_percent_3._rendered_value }}
+          {% elsif value_number_format._value == 'percent_4' %}
+            {{ measure_value_percent_4._rendered_value }}
+          {% else %}
+            {{ measure_value_decimal_2._rendered_value }}
+          {% endif %}
+
+          ;;
   }
 
   measure: single_value_chosen_period {
@@ -115,14 +282,14 @@ view: commercial_tree_diagram {
     convert_tz: no
     type: date
     sql:
-      ( SELECT CAST(MAX(date) as DATE) FROM ###########
+      ( SELECT CAST(MAX(date) as DATE) FROM `analytics-hub-prod.finance.nltv_kpi_tree`
       ) ;;
   }
 
   dimension: date_day_of_quarter {
     hidden: yes
     sql: DATE_DIFF(${date_date}, DATE_TRUNC(${date_date}, QUARTER), DAY)
-    ;;
+      ;;
   }
 
   parameter: period_comparison {
@@ -552,5 +719,48 @@ view: commercial_tree_diagram {
       )
       ;;
     html: <p style="font-size:26px">{{ value }}</p> ;;
+  }
+
+  parameter: top_tree_node {
+    type: string
+    suggest_dimension: measure
+  }
+
+  dimension: top_tree_node_dimension {
+    type: string
+    sql: COALESCE(NULLIF({{ top_tree_node._parameter_value }},''), 'NET LTV') ;;
+    hidden: yes
+  }
+}
+
+view: kpi_tree_measure_map {
+  sql_table_name: `#########`
+    ;;
+
+  dimension: measure {
+    type: string
+    sql: ${TABLE}.measure ;;
+  }
+
+  dimension: children {
+    type: string
+    sql: CONCAT(';',${TABLE}.measure,';',(ARRAY_TO_STRING(${TABLE}.children, ";"))) ;;
+  }
+
+}
+
+
+
+#### example explore setup
+explore: kpi_tree {
+  from: kpi_tree
+  label: "KPI Tree"
+  description: "Metric Tree explore for KPIs"
+  always_join: [kpi_tree_measure_map]
+  join: kpi_tree_measure_map {
+    type: inner
+    relationship: one_to_one
+    sql_on: REGEXP_CONTAINS(${kpi_tree_measure_map.children}, CONCAT(';',${kpi_tree.measure},';'))
+      AND ${kpi_tree.top_tree_node_dimension} = ${kpi_tree_measure_map.measure};;
   }
 }
