@@ -12,10 +12,22 @@ looker.plugins.visualizations.add({
             section: 'Comparison',
             type: 'boolean',
         },
+        missyElliott: {
+            default: 'horizontal',
+            display: 'select',
+            label: 'Horizontal or Vertical Tree',
+            order: 2,
+            section: 'Formatting',
+            type: 'string',
+            values: [
+              { 'Horizontal': 'horizontal' },
+              { 'Vertical': 'vertical' },
+            ],
+        },
         positiveGrowthColor: {
             display: 'color',
             display_size: 'third',
-            label: 'Positive Growth Colour', // These values updated in updateAsync
+            label: 'Positive Growth Colour',
             order: 7,
             section: 'Formatting',
             type: 'string',
@@ -42,7 +54,7 @@ looker.plugins.visualizations.add({
         positiveGrowthTextColor: {
             display: 'color',
             display_size: 'third',
-            label: 'Positive Growth Text Colour', // These values updated in updateAsync
+            label: 'Positive Growth Text Colour',
             order: 10,
             section: 'Formatting',
             type: 'string',
@@ -68,7 +80,112 @@ looker.plugins.visualizations.add({
         },
     },
     // Set up the initial state of the visualization
-    create: function(element, config) {
+    create: function(element) {
+
+        // Insert a <style> tag with some styles we'll use later.
+        element.innerHTML = `
+          <style>
+            #tree-container {
+              position: absolute;
+              left: 0px;
+              width: 100%;
+            }
+
+            .svgContainer {
+              display: block;
+                margin: auto;
+            }
+
+            .node {
+              cursor: pointer;
+            }
+
+            .node-rect {
+            }
+
+            .node-rect-closed {
+              stroke-width: 2px;
+              stroke: rgb(0,0,0);
+            }
+
+            .link {
+              fill: none;
+              stroke: lightsteelblue;
+              stroke-width: 2px;
+            }
+
+            .linkselected {
+              fill: none;
+              stroke: tomato;
+              stroke-width: 2px;
+            }
+
+            .arrow {
+              fill: lightsteelblue;
+              stroke-width: 1px;
+            }
+
+            .arrowselected {
+              fill: tomato;
+              stroke-width: 2px;
+            }
+
+            .link text {
+              font: 7px sans-serif;
+              fill: #CC0000;
+            }
+
+            .wordwrap {
+              white-space: pre-wrap; /* CSS3 */
+              white-space: -moz-pre-wrap; /* Firefox */
+              white-space: -pre-wrap; /* Opera <7 */
+              white-space: -o-pre-wrap; /* Opera 7 */
+              word-wrap: break-word; /* IE */
+            }
+
+            .node-text {
+              font: 7px sans-serif;
+            }
+
+            .tooltip-text-container {
+                height: 100%;
+                width: 100%;
+            }
+
+            .tooltip-text {
+                visibility: hidden;
+                font: 10px sans-serif;
+                color: #ffffff;
+                text-align: center;
+            }
+
+            .tooltip-box {
+                background: rgba(0, 0, 0, 0.7);
+                visibility: hidden;
+            }
+
+            p {
+              display: inline;
+            }
+
+            .textcolored {
+              color: orange;
+            }
+
+            a.exchangeName {
+              color: orange;
+            }
+
+          </style>
+
+          <body>
+            <div class="tree-container">
+                <ct-visualization id="tree-container"></ct-visualization>
+                <script>
+                </script>
+            </div>
+          </body>
+        `;
 
     },
     // Render in response to the data or settings changing
@@ -78,10 +195,10 @@ looker.plugins.visualizations.add({
         this.clearErrors();
 
         // Throw some errors and exit if the shape of the data isn't what this chart needs
-        if (queryResponse.fields.dimensions.length != 4) {
+        if (queryResponse.fields.dimensions.length != 5) {
             this.addError({
                 title: "Not correct number of dimensions",
-                message: "This chart requires 4 dimensions. Refer to confluence for guidance"
+                message: "This chart requires 5 dimensions. Refer to confluence for guidance"
             });
             return;
         }
@@ -93,125 +210,7 @@ looker.plugins.visualizations.add({
             return;
         }
 
-
-
-
-        // Insert a <style> tag with some styles we'll use later.
-        element.innerHTML = `
-      <style>
-        #tree-container {
-          position: absolute;
-          left: 0px;
-          width: 100%;
-        }
-
-        .svgContainer {
-          display: block;
-            margin: auto;
-        }
-
-        .node {
-          cursor: pointer;
-        }
-
-        .node-rect {
-        }
-
-        .node-rect-closed {
-          stroke-width: 2px;
-          stroke: rgb(0,0,0);
-        }
-
-        .link {
-          fill: none;
-          stroke: lightsteelblue;
-          stroke-width: 2px;
-        }
-
-        .linkselected {
-          fill: none;
-          stroke: tomato;
-          stroke-width: 2px;
-        }
-
-        .arrow {
-          fill: lightsteelblue;
-          stroke-width: 1px;
-        }
-
-        .arrowselected {
-          fill: tomato;
-          stroke-width: 2px;
-        }
-
-        .link text {
-          font: 7px sans-serif;
-          fill: #CC0000;
-        }
-
-        .wordwrap {
-          white-space: pre-wrap; /* CSS3 */
-          white-space: -moz-pre-wrap; /* Firefox */
-          white-space: -pre-wrap; /* Opera <7 */
-          white-space: -o-pre-wrap; /* Opera 7 */
-          word-wrap: break-word; /* IE */
-        }
-
-        .node-text {
-          font: 7px sans-serif;
-        }
-
-        .tooltip-text-container {
-            height: 100%;
-          width: 100%;
-        }
-
-        .tooltip-text {
-          visibility: hidden;
-          font: 7px sans-serif;
-          color: white;
-          display: block;
-          padding: 5px;
-        }
-
-        .tooltip-box {
-          background: rgba(0, 0, 0, 0.7);
-          visibility: hidden;
-          position: absolute;
-          border-style: solid;
-            border-width: 1px;
-            border-color: black;
-            border-top-right-radius: 0.5em;
-        }
-
-        p {
-          display: inline;
-        }
-
-        .textcolored {
-          color: orange;
-        }
-
-        a.exchangeName {
-          color: orange;
-        }
-
-      </style>
-
-      <body>
-        <div class="container">
-            <ct-visualization id="tree-container"></ct-visualization>
-            <script>
-                d3.json(jsonObj, function(error, json) {
-                    treeBoxes('', jsonObj);
-                });
-            </script>
-        </div>
-      </body>
-    `;
-
-        function treeBoxes(urlService, jsonData) {
-            var urlService_ = '';
+        function treeBoxes(jsonData) {
 
             var margin = {
                     top: 0,
@@ -226,14 +225,13 @@ looker.plugins.visualizations.add({
 
             var rectNode = {
                     width: 150,
-                    height: 65,
-                    textMargin: 5
-                },
-                tooltip = {
-                    width: 150,
-                    height: 40,
+                    height: 70,
                     textMargin: 5
                 };
+            var tooltip = { 
+                    width : 150, 
+                    height : 50, 
+                    textMargin : 7 };
             var i = 0,
                 duration = 750,
                 root;
@@ -252,37 +250,33 @@ looker.plugins.visualizations.add({
                 linkGroupToolTip,
                 defs;
 
-            init(urlService, jsonData);
-
-            function numberWithCommas(x) {
-                return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-            }
-
-            function init(urlService, jsonData) {
-                urlService_ = urlService;
-                drawTree(jsonData);
-            }
-
-            function transformToTree(baseJson) {
-                var nodes = {};
-                return baseJson.filter(function(obj) {
-                    var id = obj.measure,
-                        parentId = obj.parent_node;
-
-                    nodes[id] = Object.assign(obj, nodes[id], {
-                        children: []
-                    });
-                    parentId && (nodes[parentId] = (nodes[parentId] || {
-                        children: []
-                    })).children.push(obj);
-
-                    return !parentId;
-                });
-            }
+            drawTree(jsonData);
 
             function drawTree(jsonData) {
                 tree = d3.layout.tree().size([height, width]);
-                root = JSON.parse(JSON.stringify(transformToTree(jsonData), null, 2))[0];
+
+                // Make flat json into nested parent/child structure
+                var dataMap = jsonData.reduce(function(map, node) {
+                    map[node.measure] = node;
+                    return map;
+                }, {});
+
+                var tree_json = [];
+                jsonData.forEach(function(node) {
+                    // find parent
+                    var parent = dataMap[node.parent_node];
+                    if (parent) {
+                        // create child array if it doesn't exist
+                        (parent.children || (parent.children = []))
+                            // add node to parent's child array
+                            .push(node);
+                    } else {
+                        // parent is null or missing
+                        tree_json.push(node);
+                    }
+                });
+
+                root = JSON.parse(JSON.stringify(tree_json, null, 2))[0];
                 root.fixed = true;
 
                 // Dynamically set the height of the main svg container
@@ -303,8 +297,8 @@ looker.plugins.visualizations.add({
                             node.color = config.noGrowthColor;
                             node.text_color = config.noGrowthTextColor;
                         } else {
-                            node.color = config.noGrowthColor
-                            node.text_color = config.noGrowthTextColor
+                            node.color = config.noGrowthColor;
+                            node.text_color = config.noGrowthTextColor;
                         }
 
                         if (node.value_change > 0)
@@ -315,12 +309,28 @@ looker.plugins.visualizations.add({
                             node.arrow = '&mdash;';
                     });
                 });
-                height = maxTreeWidth * (rectNode.height + 30) + tooltip.height + 30 - margin.right - margin.left;
-                width = maxDepth * (rectNode.width * 1.5) + tooltip.width / 2 - margin.top - margin.bottom;
+
+                if (config.missyElliott === 'vertical') {
+                    height = maxDepth * (rectNode.height + 60) + 30 - margin.right - margin.left;
+                    width = maxTreeWidth * (rectNode.width * 1.75) - margin.top - margin.bottom;
+                } else {
+                    height = maxTreeWidth * (rectNode.height + 60) + 30 - margin.right - margin.left;
+                    width = maxDepth * (rectNode.width * 1.5) - margin.top - margin.bottom;
+                }
+                
+                
 
                 tree = d3.layout.tree().size([height, width]);
-                root.x0 = height / 2;
-                root.y0 = 0;
+
+
+
+                if (config.missyElliott === 'vertical') {
+                    root.x0 = 0;
+                    root.y0 = height / 2;
+                } else {
+                    root.x0 = height / 2;
+                    root.y0 = 0;
+                }
 
                 baseSvg = d3.select('#tree-container').append('svg')
                     .attr('width', width + margin.right + margin.left)
@@ -345,18 +355,17 @@ looker.plugins.visualizations.add({
                 // but this separation allows to manage the order on which elements are drew
                 // and so tooltips are always on top.
                 nodeGroup = svgGroup.append('g')
-                    .attr('id', 'nodes');
+                            .attr('id', 'nodes');
                 linkGroup = svgGroup.append('g')
-                    .attr('id', 'links');
+                            .attr('id', 'links');
                 linkGroupToolTip = svgGroup.append('g')
-                    .attr('id', 'linksTooltips');
+                                    .attr('id', 'linksTooltips');
                 nodeGroupTooltip = svgGroup.append('g')
-                    .attr('id', 'nodesTooltips');
+                                    .attr('id', 'nodesTooltips');
 
                 defs = baseSvg.append('defs');
                 initArrowDef();
                 initDropShadow();
-
                 update(root);
             }
 
@@ -369,13 +378,20 @@ looker.plugins.visualizations.add({
                 breadthFirstTraversal(tree.nodes(root), collision);
                 // Normalize for fixed-depth
                 nodes.forEach(function(d) {
-                    d.y = d.depth * (rectNode.width * 1.5);
+                    if (config.missyElliott === 'vertical') {
+                        d.y = d.depth * (rectNode.width);
+                    } else {
+                        d.y = d.depth * (rectNode.width * 1.5);
+                    }
+                    
                 });
 
                 // 1) ******************* Update the nodes *******************
                 var node = nodeGroup.selectAll('g.node').data(nodes, function(d) {
                     return d.id || (d.id = ++i);
                 });
+
+
                 var nodesTooltip = nodeGroupTooltip.selectAll('g').data(nodes, function(d) {
                     return d.id || (d.id = ++i);
                 });
@@ -388,15 +404,24 @@ looker.plugins.visualizations.add({
                 var nodeEnter = node.enter().insert('g', 'g.node')
                     .attr('class', 'node')
                     .attr('transform', function(d) {
-                        return 'translate(' + source.y0 + ',' + source.x0 + ')';
+                        if (config.missyElliott === 'vertical') {
+                            return 'translate(' + source.x0 + ',' + source.y0 + ')';
+                        } else {
+                            return 'translate(' + source.y0 + ',' + source.x0 + ')';
+                        }
                     })
                     .on('click', function(d) {
                         click(d);
                     });
+
                 var nodeEnterTooltip = nodesTooltip.enter().append('g')
                     .attr('transform', function(d) {
-                        return 'translate(' + source.y0 + ',' + source.x0 + ')';
-                    });
+                        if (config.missyElliott === 'vertical') {
+                            return 'translate(' + source.x0 + ',' + source.y0 + ')';
+                        } else {
+                            return 'translate(' + source.y0 + ',' + source.x0 + ')';
+                        }
+                        });
 
                 nodeEnter.append('g').append('rect')
                     .attr('rx', 6)
@@ -420,24 +445,22 @@ looker.plugins.visualizations.add({
                     .attr('y', rectNode.textMargin)
                     .attr('width', function() {
                         return (rectNode.width - rectNode.textMargin * 2) < 0 ? 0 :
-                            (rectNode.width - rectNode.textMargin * 2)
+                            (rectNode.width - rectNode.textMargin * 2);
                     })
                     .attr('height', function() {
                         return (rectNode.height - rectNode.textMargin * 2) < 0 ? 0 :
-                            (rectNode.height - rectNode.textMargin * 2)
+                            (rectNode.height - rectNode.textMargin * 2);
                     })
                     .append('xhtml').html(function(d) {
                         return '<div style="width: ' +
                             (rectNode.width - rectNode.textMargin * 2) + 'px; height: ' +
                             (rectNode.height - rectNode.textMargin * 2) + 'px; font-size:0.65em; display: flex; justify-content: center; align-items: center; color:' + d.text_color + '" class="node-text wordwrap;"><center>' +
                             '<b><u>' + d.measure + '</u></b><br><br>' +
-                            '<b>Value: </b>' + d.rendered_value
+                            '<b>Value: </b>' + d.rendered_value +
 
                             // Show value_change dependent on config toggle
-                            +
-                            d.value_change_text
+                            d.value_change_text +
 
-                            +
                             '</center></div>';
                     })
                     .on('mouseover', function(d) {
@@ -449,15 +472,58 @@ looker.plugins.visualizations.add({
                         $('#nodeInfoTextID' + d.id).css('visibility', 'hidden');
                     });
 
+    
+                nodeEnterTooltip.append("rect")
+                .attr('id', function(d) { return 'nodeInfoID' + d.id; })
+                .attr('x', rectNode.width / 2)
+                .attr('y', rectNode.height / 2)
+                .attr('width', tooltip.width)
+                .attr('height', tooltip.height)
+                .attr('class', 'tooltip-box')
+                .style('fill-opacity', 0.8)
+                .on('mouseover', function(d) {
+                    $('#nodeInfoID' + d.id).css('visibility', 'visible');
+                    $('#nodeInfoTextID' + d.id).css('visibility', 'visible');
+                    removeMouseEvents();
+                })
+                .on('mouseout', function(d) {
+                    $('#nodeInfoID' + d.id).css('visibility', 'hidden');
+                    $('#nodeInfoTextID' + d.id).css('visibility', 'hidden');
+                    reactivateMouseEvents();
+                });
+
+                nodeEnterTooltip.append("text")
+                .attr('id', function(d) { return 'nodeInfoTextID' + d.id; })
+                .attr('x', rectNode.width / 2 + tooltip.textMargin)
+                .attr('y', rectNode.height / 2 + tooltip.textMargin * 2)
+                .attr('width', tooltip.width)
+                .attr('height', tooltip.height)
+                .attr('class', 'tooltip-text')
+                .style('fill', 'white')
+                .append("tspan")
+                .text(function(d) {return 'Description: ' + d.description;})
+                .append("tspan")
+                .attr('x', rectNode.width / 2 + tooltip.textMargin)
+                .attr('dy', '1.5em');
+
                 // Transition nodes to their new position.
                 var nodeUpdate = node.transition().duration(duration)
                     .attr('transform', function(d) {
-                        return 'translate(' + d.y + ',' + d.x + ')';
+                        if (config.missyElliott === 'vertical') {
+                            return 'translate(' + d.x + ',' + d.y + ')';
+                        } else {
+                            return 'translate(' + d.y + ',' + d.x + ')';
+                        }
                     });
+
                 nodesTooltip.transition().duration(duration)
-                    .attr('transform', function(d) {
-                        return 'translate(' + d.y + ',' + d.x + ')';
-                    });
+                .attr('transform', function(d) { 
+                    if (config.missyElliott === 'vertical') {
+                        return 'translate(' + d.x + ',' + d.y + ')'; 
+                    } else {
+                        return 'translate(' + d.y + ',' + d.x + ')'; 
+                    }
+                });
 
                 nodeUpdate.select('rect')
                     .attr('class', function(d) {
@@ -468,15 +534,24 @@ looker.plugins.visualizations.add({
 
                 // Transition exiting nodes to the parent's new position
                 var nodeExit = node.exit().transition().duration(duration)
-                    .attr('transform', function(d) {
-                        return 'translate(' + source.y + ',' + source.x + ')';
+                    .attr('transform', function(d) { 
+                        if (config.missyElliott === 'vertical') {
+                            return 'translate(' + source.x + ',' + source.y + ')';
+                        } else {
+                            return 'translate(' + source.y + ',' + source.x + ')';
+                        }
                     })
                     .remove();
                 nodesTooltip.exit().transition().duration(duration)
                     .attr('transform', function(d) {
-                        return 'translate(' + source.y + ',' + source.x + ')';
-                    })
-                    .remove();
+                        if (config.missyElliott === 'vertical') {
+                            return 'translate(' + source.x + ',' + source.y + ')'; 
+                        } else {
+                            return 'translate(' + source.y + ',' + source.x + ')';
+                        }
+                     
+                 })
+                .remove();
 
                 nodeExit.select('text').style('fill-opacity', 1e-6);
 
@@ -485,12 +560,13 @@ looker.plugins.visualizations.add({
                 var link = linkGroup.selectAll('path').data(links, function(d) {
                     return d.target.id;
                 });
-                var linkTooltip = linkGroupToolTip.selectAll('g').data(links, function(d) {
-                    return d.target.id;
-                });
+
+                function linkMarkerStart(isSelected) {
+                    return '';
+                }
 
                 function linkType(link) {
-                    return "Asynchronous [\u2192]";;
+                    return "Asynchronous [\u2192]";
                 }
 
                 d3.selection.prototype.moveToFront = function() {
@@ -500,34 +576,32 @@ looker.plugins.visualizations.add({
                 };
 
                 // Enter any new links at the parent's previous position.
-                // Enter any new links at the parent's previous position.
                 var linkenter = link.enter().insert('path', 'g')
                     .attr('class', 'link')
-                    .attr('id', function(d) {
-                        return 'linkID' + d.target.id;
-                    })
-                    .attr('d', function(d) {
-                        return diagonal(d);
-                    })
+                    .attr('id', function(d) { return 'linkID' + d.target.id; })
+                    .attr('d', function(d) { return diagonal(d); })
                     .attr('marker-end', 'url(#end-arrow)')
-                    .attr('marker-start', function(d) {
-                        return '';
-                    })
+                    .attr('marker-start', function(d) { return linkMarkerStart(false); })
                     .on('mouseover', function(d) {
                         d3.select(this).moveToFront();
-
+                        
                         d3.select(this).attr('marker-end', 'url(#end-arrow-selected)');
-                        d3.select(this).attr('marker-start', '');
+                        d3.select(this).attr('marker-start', linkMarkerStart(true)); 
                         d3.select(this).attr('class', 'linkselected');
-
-                        $('#tooltipLinkID' + d.target.id).attr('x', (d.target.y + rectNode.width - d.source.y) / 2 + d.source.y);
-                        $('#tooltipLinkID' + d.target.id).attr('y', (d.target.x - d.source.x) / 2 + d.source.x);
+                        
+                        if (config.missyElliott === 'vertical') {
+                            $('#tooltipLinkID' + d.target.id).attr('y', (d.target.y + rectNode.width - d.source.y) / 2 + d.source.y);
+                            $('#tooltipLinkID' + d.target.id).attr('x', (d.target.x - d.source.x) / 2 + d.source.x);
+                        } else {
+                            $('#tooltipLinkID' + d.target.id).attr('x', (d.target.y + rectNode.width - d.source.y) / 2 + d.source.y);
+                            $('#tooltipLinkID' + d.target.id).attr('y', (d.target.x - d.source.x) / 2 + d.source.x);
+                        }
                         $('#tooltipLinkID' + d.target.id).css('visibility', 'visible');
                         $('#tooltipLinkTextID' + d.target.id).css('visibility', 'visible');
                     })
                     .on('mouseout', function(d) {
                         d3.select(this).attr('marker-end', 'url(#end-arrow)');
-                        d3.select(this).attr('marker-start', '');
+                        d3.select(this).attr('marker-start', linkMarkerStart(false)); 
                         d3.select(this).attr('class', 'link');
                         $('#tooltipLinkID' + d.target.id).css('visibility', 'hidden');
                         $('#tooltipLinkTextID' + d.target.id).css('visibility', 'hidden');
@@ -535,20 +609,11 @@ looker.plugins.visualizations.add({
 
                 // Transition links to their new position.
                 var linkUpdate = link.transition().duration(duration)
-                    .attr('d', function(d) {
-                        return diagonal(d);
-                    });
-                linkTooltip.transition().duration(duration)
-                    .attr('d', function(d) {
-                        return diagonal(d);
-                    });
-
+                                     .attr('d', function(d) { return diagonal(d); });
+            
                 // Transition exiting nodes to the parent's new position.
                 link.exit().transition()
-                    .remove();
-
-                linkTooltip.exit().transition()
-                    .remove();
+                .remove();
 
                 // Stash the old positions for transition.
                 nodes.forEach(function(d) {
@@ -625,8 +690,15 @@ looker.plugins.visualizations.add({
                 var minPadding = 5;
                 if (siblings) {
                     for (var i = 0; i < siblings.length - 1; i++) {
-                        if (siblings[i + 1].x - (siblings[i].x + rectNode.height) < minPadding)
-                            siblings[i + 1].x = siblings[i].x + rectNode.height + minPadding;
+
+                        if (config.missyElliott === 'vertical') {
+                            if (siblings[i + 1].x - (siblings[i].x + rectNode.width) < minPadding)
+                                siblings[i + 1].x = siblings[i].x + rectNode.width + minPadding;
+                        } else {
+                            if (siblings[i + 1].x - (siblings[i].x + rectNode.height) < minPadding)
+                                siblings[i + 1].x = siblings[i].x + rectNode.height + minPadding;
+                        }
+                        
                     }
                 }
             }
@@ -644,26 +716,38 @@ looker.plugins.visualizations.add({
 
             // Name of the event depends of the browser
             function getMouseWheelEvent() {
-                if (d3.select('#tree-container').select('svg').on('wheel.zoom')) {
+                if (d3.select('#tree-container').select('svg').on('wheel.zoom'))
+                {
                     mouseWheelName = 'wheel.zoom';
                     return d3.select('#tree-container').select('svg').on('wheel.zoom');
                 }
-                if (d3.select('#tree-container').select('svg').on('mousewheel.zoom') != null) {
+                if (d3.select('#tree-container').select('svg').on('mousewheel.zoom') != null)
+                {
                     mouseWheelName = 'mousewheel.zoom';
                     return d3.select('#tree-container').select('svg').on('mousewheel.zoom');
                 }
-                if (d3.select('#tree-container').select('svg').on('DOMMouseScroll.zoom')) {
+                if (d3.select('#tree-container').select('svg').on('DOMMouseScroll.zoom'))
+                {
                     mouseWheelName = 'DOMMouseScroll.zoom';
                     return d3.select('#tree-container').select('svg').on('DOMMouseScroll.zoom');
                 }
             }
 
             function diagonal(d) {
-                var p0 = {
-                        x: d.source.x + rectNode.height / 2,
-                        y: (d.source.y + rectNode.width)
-                    },
-                    p3 = {
+
+                    if (config.missyElliott === 'vertical') {
+                        var p0 = {
+                            x: d.source.x + rectNode.height,
+                            y: (d.source.y + rectNode.width / 2)
+                        };
+                    } else {
+                        var p0 = {
+                            x: d.source.x + rectNode.height / 2,
+                            y: (d.source.y + rectNode.width)
+                        };
+                    }
+                
+                    var p3 = {
                         x: d.target.x + rectNode.height / 2,
                         y: d.target.y - 12 // -12, so the end arrows are just before the rect node
                     },
@@ -676,7 +760,11 @@ looker.plugins.visualizations.add({
                         y: m
                     }, p3];
                 p = p.map(function(d) {
-                    return [d.y, d.x];
+                    if (config.missyElliott === 'vertical') {
+                        return [d.x, d.y];
+                    } else {
+                        return [d.y, d.x];
+                    }
                 });
                 return 'M' + p[0] + 'C' + p[1] + ' ' + p[2] + ' ' + p[3];
             }
@@ -762,9 +850,21 @@ looker.plugins.visualizations.add({
             }
         }
 
+        function numberWithCommas(nStr) {
+            nStr += '';
+            var x = nStr.split('.');
+            var x1 = x[0];
+            var x2 = x.length > 1 ? '.' + x[1] : '';
+            var rgx = /(\d+)(\d{3})/;
+            while (rgx.test(x1)) {
+             x1 = x1.replace(rgx, '$1' + ',' + '$2');
+            }
+            return x1 + x2;
+        }
 
-        var item = {}
-        var jsonObj = []
+
+        var item = {};
+        var jsonObj = [];
         // transform raw data from queryResponse into json array
         for (var row of data) {
 
@@ -772,6 +872,7 @@ looker.plugins.visualizations.add({
             var parent_node = row[queryResponse.fields.dimensions[1].name].value;
             var value_number_format = row[queryResponse.fields.dimensions[2].name].value;
             var value_calc = row[queryResponse.fields.dimensions[3].name].value;
+            var description = row[queryResponse.fields.dimensions[4].name].value;
             var single_value_chosen_period = row[queryResponse.fields.measures[0].name].value;
             var single_value_previous_period = row[queryResponse.fields.measures[1].name].value;
             var numerator_chosen_period = row[queryResponse.fields.measures[2].name].value;
@@ -779,64 +880,76 @@ looker.plugins.visualizations.add({
             var denominator_chosen_period = row[queryResponse.fields.measures[4].name].value;
             var denominator_previous_period = row[queryResponse.fields.measures[5].name].value;
 
-            item = {}
-            item["measure"] = measure;
-            item["parent_node"] = parent_node;
-            item["value_number_format"] = value_number_format;
-            item["value_calc"] = value_calc;
-            item["single_value_chosen_period"] = single_value_chosen_period;
-            item["single_value_previous_period"] = single_value_previous_period;
-            item["single_value_pop"] = (single_value_chosen_period / single_value_previous_period) - 1;
-            item["numerator_chosen_period"] = numerator_chosen_period;
-            item["numerator_previous_period"] = numerator_previous_period;
-            item["denominator_chosen_period"] = denominator_chosen_period;
-            item["denominator_previous_period"] = denominator_previous_period;
-            item["average_value"] = (numerator_chosen_period / denominator_chosen_period)
-            item["average_pop"] = ((numerator_chosen_period / denominator_chosen_period) / (numerator_previous_period / denominator_previous_period)) - 1;
+            item = {};
+            item.measure = measure;
+            item.parent_node = parent_node;
+            item.value_number_format = value_number_format;
+            item.value_calc = value_calc;
+            item.description = description;
+            item.single_value_chosen_period = single_value_chosen_period;
+            item.single_value_previous_period = single_value_previous_period;
+            item.single_value_pop = (single_value_chosen_period / single_value_previous_period) - 1;
+            item.numerator_chosen_period = numerator_chosen_period;
+            item.numerator_previous_period = numerator_previous_period;
+            item.denominator_chosen_period = denominator_chosen_period;
+            item.denominator_previous_period = denominator_previous_period;
+            item.average_value = (numerator_chosen_period / denominator_chosen_period);
+            item.average_pop = ((numerator_chosen_period / denominator_chosen_period) / (numerator_previous_period / denominator_previous_period)) - 1;
 
             // choose how to calculate the value whether its a sum or an average
             if (value_calc == 'sum')
-                item["value_change"] = item["single_value_pop"];
+                item.value_change = item.single_value_pop;
             if (value_calc == 'average')
-                item["value_change"] = item["average_pop"];
+                item.value_change = item.average_pop;
             if (value_calc == 'sum')
-                item["value"] = item["single_value_chosen_period"];
+                item.value = item.single_value_chosen_period;
             if (value_calc == 'average')
-                item["value"] = item["average_value"];
+                item.value = item.average_value;
 
-            item["value_change_text"] = ''
+            item.value_change_text = '';
             if (config.enableComparison === true) {
-                item["value_change_text"] = '<br><b>PoP: </b>' + ' ' + numberWithCommas(Math.round(((item["value_change"] * 100) + Number.EPSILON) * 100) / 100) + '% <br>'
+                item.value_change_text = '<br><b>PoP: </b>' + ' ' + numberWithCommas(Math.round(((item.value_change * 100) + Number.EPSILON) * 100) / 100) + '% <br>';
             }
 
-
-            function numberWithCommas(x) {
-                return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-            }
 
             // render the value correctly
             if (value_number_format == 'gbp_0')
-                item["rendered_value"] = "£" + numberWithCommas(Math.round(item["value"]));
+                item.rendered_value = "£" + numberWithCommas(Math.round(item.value));
             if (value_number_format == 'gbp')
-                item["rendered_value"] = "£" + numberWithCommas(Math.round((item["value"] + Number.EPSILON) * 100) / 100);
+                item.rendered_value = "£" + numberWithCommas(Math.round((item.value + Number.EPSILON) * 100) / 100);
             if (value_number_format == 'decimal_2')
-                item["rendered_value"] = numberWithCommas(Math.round((item["value"] + Number.EPSILON) * 100) / 100);
+                item.rendered_value = numberWithCommas(Math.round((item.value + Number.EPSILON) * 100) / 100);
             if (value_number_format == 'decimal_0')
-                item["rendered_value"] = numberWithCommas(Math.round(item["value"]));
-
-
+                item.rendered_value = numberWithCommas(Math.round(item.value));
+            if (value_number_format == 'percent_4')
+                item.rendered_value = numberWithCommas(Math.round((item.value + Number.EPSILON) * 1000000) / 10000) + "%";
+            if (value_number_format == 'percent_3')
+                item.rendered_value = numberWithCommas(Math.round((item.value + Number.EPSILON) * 100000) / 1000) + "%";
+            if (value_number_format == 'percent_2')
+                item.rendered_value = numberWithCommas(Math.round((item.value + Number.EPSILON) * 10000) / 100) + "%";
+            if (value_number_format == 'percent_1')
+                item.rendered_value = numberWithCommas(Math.round((item.value + Number.EPSILON) * 1000) / 10) + "%";
+            if (value_number_format == 'percent_0')
+                item.rendered_value = numberWithCommas(Math.round(item.value * 100)) + "%";
 
 
             jsonObj.push(item);
 
 
-        };
+        }
 
-        d3.json(jsonObj, function(error, json) {
-            treeBoxes('', jsonObj);
+
+        // empty element
+        d3.selectAll("svg").remove();
+
+        d3.json(jsonObj, function() {
+
+            // empty element
+            d3.selectAll("svg").remove();
+            treeBoxes(jsonObj);
+
+            // We are done rendering! Let Looker know.
+            done();
         });
-
-        // We are done rendering! Let Looker know.
-        done()
     }
 });
