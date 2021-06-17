@@ -44,8 +44,7 @@ view: kpi_tree {
 
   dimension: description {
     type: string
-    # sql: ${TABLE}.description ;;
-    sql: 'Dummy Description' ;;
+     sql: ${TABLE}.description ;;
   }
 
   measure: single_value {
