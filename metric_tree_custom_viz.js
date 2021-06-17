@@ -1,3 +1,6 @@
+// To Do:
+// make nodes bigger and spacing around it
+
 looker.plugins.visualizations.add({
     // Id and Label are legacy properties that no longer have any function besides documenting
     // what the visualization used to have. The properties are now set via the manifest
@@ -114,25 +117,9 @@ looker.plugins.visualizations.add({
               stroke-width: 2px;
             }
 
-            .linkselected {
-              fill: none;
-              stroke: tomato;
-              stroke-width: 2px;
-            }
-
             .arrow {
               fill: lightsteelblue;
               stroke-width: 1px;
-            }
-
-            .arrowselected {
-              fill: tomato;
-              stroke-width: 2px;
-            }
-
-            .link text {
-              font: 7px sans-serif;
-              fill: #CC0000;
             }
 
             .wordwrap {
@@ -147,23 +134,6 @@ looker.plugins.visualizations.add({
               font: 7px sans-serif;
             }
 
-            .tooltip-text-container {
-                height: 100%;
-                width: 100%;
-            }
-
-            .tooltip-text {
-                visibility: hidden;
-                font: 10px sans-serif;
-                color: #ffffff;
-                text-align: center;
-            }
-
-            .tooltip-box {
-                background: rgba(0, 0, 0, 0.7);
-                visibility: hidden;
-            }
-
             p {
               display: inline;
             }
@@ -174,6 +144,21 @@ looker.plugins.visualizations.add({
 
             a.exchangeName {
               color: orange;
+            }
+
+            .toolTip {
+                position: absolute;
+                display: none;
+                width: auto;
+                height: auto;
+                background: none repeat scroll 0 0 white;
+                border: 0 none;
+                border-radius: 8px 8px 8px 8px;
+                box-shadow: -3px 3px 15px #888888;
+                color: black;
+                font: 12px sans-serif;
+                padding: 5px;
+                text-align: center;
             }
 
           </style>
@@ -220,18 +205,14 @@ looker.plugins.visualizations.add({
                 },
                 // Height and width are redefined later in function of the size of the tree
                 // (after that the data are loaded)
-                width = 800 - margin.right - margin.left,
+                width = 900 - margin.right - margin.left,
                 height = 400 - margin.top - margin.bottom;
 
             var rectNode = {
-                    width: 150,
+                    width: 175,
                     height: 70,
                     textMargin: 5
                 };
-            var tooltip = { 
-                    width : 150, 
-                    height : 50, 
-                    textMargin : 7 };
             var i = 0,
                 duration = 750,
                 root;
@@ -244,10 +225,8 @@ looker.plugins.visualizations.add({
             var tree;
             var baseSvg,
                 svgGroup,
-                nodeGroup, // If nodes are not grouped together, after a click the svg node will be set after his corresponding tooltip and will hide it
-                nodeGroupTooltip,
+                nodeGroup,
                 linkGroup,
-                linkGroupToolTip,
                 defs;
 
             drawTree(jsonData);
@@ -314,7 +293,7 @@ looker.plugins.visualizations.add({
                     height = maxDepth * (rectNode.height + 60) + 30 - margin.right - margin.left;
                     width = maxTreeWidth * (rectNode.width * 1.75) - margin.top - margin.bottom;
                 } else {
-                    height = maxTreeWidth * (rectNode.height + 60) + 30 - margin.right - margin.left;
+                    height = maxTreeWidth * (rectNode.height + 60) + 50 - margin.right - margin.left;
                     width = maxDepth * (rectNode.width * 1.5) - margin.top - margin.bottom;
                 }
                 
@@ -350,18 +329,10 @@ looker.plugins.visualizations.add({
                     .append('g')
                     .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
 
-                // SVG elements under nodeGroupTooltip could be associated with nodeGroup,
-                // same for linkGroupToolTip and linkGroup,
-                // but this separation allows to manage the order on which elements are drew
-                // and so tooltips are always on top.
                 nodeGroup = svgGroup.append('g')
                             .attr('id', 'nodes');
                 linkGroup = svgGroup.append('g')
                             .attr('id', 'links');
-                linkGroupToolTip = svgGroup.append('g')
-                                    .attr('id', 'linksTooltips');
-                nodeGroupTooltip = svgGroup.append('g')
-                                    .attr('id', 'nodesTooltips');
 
                 defs = baseSvg.append('defs');
                 initArrowDef();
@@ -370,6 +341,15 @@ looker.plugins.visualizations.add({
             }
 
             function update(source) {
+
+                function getTextWidth(text, font) {
+                    // re-use canvas object for better performance
+                    var canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
+                    var context = canvas.getContext("2d");
+                    context.font = font;
+                    var metrics = context.measureText(text);
+                    return metrics.width;
+                }
                 // Compute the new tree layout
                 var nodes = tree.nodes(root).reverse(),
                     links = tree.links(nodes);
@@ -392,10 +372,6 @@ looker.plugins.visualizations.add({
                 });
 
 
-                var nodesTooltip = nodeGroupTooltip.selectAll('g').data(nodes, function(d) {
-                    return d.id || (d.id = ++i);
-                });
-
                 // Enter any new nodes at the parent's previous position
                 // We use "insert" rather than "append", so when a new child node is added (after a click)
                 // it is added at the top of the group, so it is drawed first
@@ -414,14 +390,7 @@ looker.plugins.visualizations.add({
                         click(d);
                     });
 
-                var nodeEnterTooltip = nodesTooltip.enter().append('g')
-                    .attr('transform', function(d) {
-                        if (config.missyElliott === 'vertical') {
-                            return 'translate(' + source.x0 + ',' + source.y0 + ')';
-                        } else {
-                            return 'translate(' + source.y0 + ',' + source.x0 + ')';
-                        }
-                        });
+                var tool = d3.select("body").append("div").attr("class", "toolTip");
 
                 nodeEnter.append('g').append('rect')
                     .attr('rx', 6)
@@ -463,48 +432,14 @@ looker.plugins.visualizations.add({
 
                             '</center></div>';
                     })
-                    .on('mouseover', function(d) {
-                        $('#nodeInfoID' + d.id).css('visibility', 'visible');
-                        $('#nodeInfoTextID' + d.id).css('visibility', 'visible');
-                    })
-                    .on('mouseout', function(d) {
-                        $('#nodeInfoID' + d.id).css('visibility', 'hidden');
-                        $('#nodeInfoTextID' + d.id).css('visibility', 'hidden');
+                    .on("mousemove", function (d) {
+                        tool.style("left", d3.event.pageX + 10 + "px")
+                        tool.style("top", d3.event.pageY - 20 + "px")
+                        tool.style("display", "inline-block");
+                        tool.html('Description: ' + d.description);
+                    }).on("mouseout", function (d) {
+                        tool.style("display", "none");
                     });
-
-    
-                nodeEnterTooltip.append("rect")
-                .attr('id', function(d) { return 'nodeInfoID' + d.id; })
-                .attr('x', rectNode.width / 2)
-                .attr('y', rectNode.height / 2)
-                .attr('width', tooltip.width)
-                .attr('height', tooltip.height)
-                .attr('class', 'tooltip-box')
-                .style('fill-opacity', 0.8)
-                .on('mouseover', function(d) {
-                    $('#nodeInfoID' + d.id).css('visibility', 'visible');
-                    $('#nodeInfoTextID' + d.id).css('visibility', 'visible');
-                    removeMouseEvents();
-                })
-                .on('mouseout', function(d) {
-                    $('#nodeInfoID' + d.id).css('visibility', 'hidden');
-                    $('#nodeInfoTextID' + d.id).css('visibility', 'hidden');
-                    reactivateMouseEvents();
-                });
-
-                nodeEnterTooltip.append("text")
-                .attr('id', function(d) { return 'nodeInfoTextID' + d.id; })
-                .attr('x', rectNode.width / 2 + tooltip.textMargin)
-                .attr('y', rectNode.height / 2 + tooltip.textMargin * 2)
-                .attr('width', tooltip.width)
-                .attr('height', tooltip.height)
-                .attr('class', 'tooltip-text')
-                .style('fill', 'white')
-                .append("tspan")
-                .text(function(d) {return 'Description: ' + d.description;})
-                .append("tspan")
-                .attr('x', rectNode.width / 2 + tooltip.textMargin)
-                .attr('dy', '1.5em');
 
                 // Transition nodes to their new position.
                 var nodeUpdate = node.transition().duration(duration)
@@ -515,15 +450,6 @@ looker.plugins.visualizations.add({
                             return 'translate(' + d.y + ',' + d.x + ')';
                         }
                     });
-
-                nodesTooltip.transition().duration(duration)
-                .attr('transform', function(d) { 
-                    if (config.missyElliott === 'vertical') {
-                        return 'translate(' + d.x + ',' + d.y + ')'; 
-                    } else {
-                        return 'translate(' + d.y + ',' + d.x + ')'; 
-                    }
-                });
 
                 nodeUpdate.select('rect')
                     .attr('class', function(d) {
@@ -542,16 +468,6 @@ looker.plugins.visualizations.add({
                         }
                     })
                     .remove();
-                nodesTooltip.exit().transition().duration(duration)
-                    .attr('transform', function(d) {
-                        if (config.missyElliott === 'vertical') {
-                            return 'translate(' + source.x + ',' + source.y + ')'; 
-                        } else {
-                            return 'translate(' + source.y + ',' + source.x + ')';
-                        }
-                     
-                 })
-                .remove();
 
                 nodeExit.select('text').style('fill-opacity', 1e-6);
 
@@ -560,10 +476,6 @@ looker.plugins.visualizations.add({
                 var link = linkGroup.selectAll('path').data(links, function(d) {
                     return d.target.id;
                 });
-
-                function linkMarkerStart(isSelected) {
-                    return '';
-                }
 
                 function linkType(link) {
                     return "Asynchronous [\u2192]";
@@ -581,31 +493,6 @@ looker.plugins.visualizations.add({
                     .attr('id', function(d) { return 'linkID' + d.target.id; })
                     .attr('d', function(d) { return diagonal(d); })
                     .attr('marker-end', 'url(#end-arrow)')
-                    .attr('marker-start', function(d) { return linkMarkerStart(false); })
-                    .on('mouseover', function(d) {
-                        d3.select(this).moveToFront();
-                        
-                        d3.select(this).attr('marker-end', 'url(#end-arrow-selected)');
-                        d3.select(this).attr('marker-start', linkMarkerStart(true)); 
-                        d3.select(this).attr('class', 'linkselected');
-                        
-                        if (config.missyElliott === 'vertical') {
-                            $('#tooltipLinkID' + d.target.id).attr('y', (d.target.y + rectNode.width - d.source.y) / 2 + d.source.y);
-                            $('#tooltipLinkID' + d.target.id).attr('x', (d.target.x - d.source.x) / 2 + d.source.x);
-                        } else {
-                            $('#tooltipLinkID' + d.target.id).attr('x', (d.target.y + rectNode.width - d.source.y) / 2 + d.source.y);
-                            $('#tooltipLinkID' + d.target.id).attr('y', (d.target.x - d.source.x) / 2 + d.source.x);
-                        }
-                        $('#tooltipLinkID' + d.target.id).css('visibility', 'visible');
-                        $('#tooltipLinkTextID' + d.target.id).css('visibility', 'visible');
-                    })
-                    .on('mouseout', function(d) {
-                        d3.select(this).attr('marker-end', 'url(#end-arrow)');
-                        d3.select(this).attr('marker-start', linkMarkerStart(false)); 
-                        d3.select(this).attr('class', 'link');
-                        $('#tooltipLinkID' + d.target.id).css('visibility', 'hidden');
-                        $('#tooltipLinkTextID' + d.target.id).css('visibility', 'hidden');
-                    });
 
                 // Transition links to their new position.
                 var linkUpdate = link.transition().duration(duration)
@@ -687,7 +574,7 @@ looker.plugins.visualizations.add({
 
             // x = ordoninates and y = abscissas
             function collision(siblings) {
-                var minPadding = 5;
+                var minPadding = 15;
                 if (siblings) {
                     for (var i = 0; i < siblings.length - 1; i++) {
 
@@ -737,8 +624,8 @@ looker.plugins.visualizations.add({
 
                     if (config.missyElliott === 'vertical') {
                         var p0 = {
-                            x: d.source.x + rectNode.height,
-                            y: (d.source.y + rectNode.width / 2)
+                            x: d.source.x + (rectNode.width / 2),
+                            y: d.source.y + rectNode.height
                         };
                     } else {
                         var p0 = {
@@ -747,11 +634,19 @@ looker.plugins.visualizations.add({
                         };
                     }
                 
-                    var p3 = {
-                        x: d.target.x + rectNode.height / 2,
-                        y: d.target.y - 12 // -12, so the end arrows are just before the rect node
-                    },
-                    m = (p0.y + p3.y) / 2,
+                    if (config.missyElliott === 'vertical') {
+                        var p3 = {
+                            x: d.target.x + rectNode.width / 2,
+                            y: d.target.y - 12 // -12, so the end arrows are just before the rect node
+                        }
+                    } else {
+                        var p3 = {
+                            x: d.target.x + rectNode.height / 2,
+                            y: d.target.y - 12 // -12, so the end arrows are just before the rect node
+                        }
+                    }
+                    
+                    var m = (p0.y + p3.y) / 2,
                     p = [p0, {
                         x: p0.x,
                         y: m
@@ -821,32 +716,6 @@ looker.plugins.visualizations.add({
                     .attr('class', 'arrowselected')
                     .append('path')
                     .attr('d', 'M0,-5L10,0L0,5');
-
-                // Start arrow
-                defs.append('marker')
-                    .attr('id', 'start-arrow')
-                    .attr('viewBox', '0 -5 10 10')
-                    .attr('refX', 0)
-                    .attr('refY', 0)
-                    .attr('markerWidth', 6)
-                    .attr('markerHeight', 6)
-                    .attr('orient', 'auto')
-                    .attr('class', 'arrow')
-                    .append('path')
-                    .attr('d', 'M10,-5L0,0L10,5');
-
-                // Start arrow selected
-                defs.append('marker')
-                    .attr('id', 'start-arrow-selected')
-                    .attr('viewBox', '0 -5 10 10')
-                    .attr('refX', 0)
-                    .attr('refY', 0)
-                    .attr('markerWidth', 6)
-                    .attr('markerHeight', 6)
-                    .attr('orient', 'auto')
-                    .attr('class', 'arrowselected')
-                    .append('path')
-                    .attr('d', 'M10,-5L0,0L10,5');
             }
         }
 
