@@ -18,6 +18,7 @@ dimension: max_date {
     view_label: "Period Over Period"
     type: date
     convert_tz: no
+    description: "Only needed if choosing Custom Date Range in Period Select"
   }
 
   parameter: period_comparison {
@@ -31,6 +32,7 @@ dimension: max_date {
       label: "Previous Period"
       value: "previous_period"
     }
+    description: "What time period are you comparing the chosen period's performance against? Use in conjunction with the Periods Ago dimension, this determines what will be period 1"
   }
 
   parameter: period_select {
@@ -84,6 +86,7 @@ dimension: max_date {
       label: "Custom Date Range - LFL Weeks"
       value: "CUSTOM_WEEK"
     }
+    description: "What time period do you want to choose to analyse? Use in conjunction with the Periods Ago dimension, this determines what will be period 0"
   }
 
   parameter: periodtodate_or_total {
@@ -97,6 +100,7 @@ dimension: max_date {
       label: "Total"
       value: "total"
     }
+    description: "Do you want to compare complete time Periods or just To Date. Must be used in conjunction with Is Period To Date or Total = Yes"
   }
 
   dimension: is_period_to_date_or_total {
@@ -140,9 +144,11 @@ dimension: max_date {
       {% endif %}
       = 1
     ;;
+    description: "Use in conjunction with Periodtodate Or Total parameter"
   }
 
   dimension: periods_ago {
+    description: "Use in conjunction with Period Select & Period Comparison parameters. Period 0 will be the Period Select value, and Period Comparison will determine what is Period 1+"
     view_label: "Period Over Period"
     type: number
     sql:
@@ -617,4 +623,37 @@ dimension: max_date {
             1
           {% endif %}
         ;;
+  }
+
+  measure: selected_period_dates {
+    description: "Text field to visualise the time periods being analysed with the Period Select and Period Comparison parameters"
+    group_label: "Period Over Period"
+    sql:
+      CONCAT(
+        "This dashboard is showing: "
+        , MIN(
+            CASE
+              WHEN ${periods_ago} = 0
+              THEN ${fulldate_date}
+            END)
+        , " - "
+        , MAX(
+            CASE
+              WHEN ${periods_ago} = 0
+              THEN ${fulldate_date}
+            END)
+        , ", comparing against: "
+        , MIN(
+            CASE
+              WHEN ${periods_ago} = 1
+              THEN ${fulldate_date}
+            END)
+        , " - "
+        , MAX(
+            CASE
+              WHEN ${periods_ago} = 1
+              THEN ${fulldate_date}
+            END)
+      )
+      ;;
   }
