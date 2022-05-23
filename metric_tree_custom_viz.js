@@ -1,6 +1,3 @@
-// To Do:
-// make nodes bigger and spacing around it
-
 looker.plugins.visualizations.add({
     // Id and Label are legacy properties that no longer have any function besides documenting
     // what the visualization used to have. The properties are now set via the manifest
@@ -84,94 +81,7 @@ looker.plugins.visualizations.add({
     },
     // Set up the initial state of the visualization
     create: function(element) {
-
-        // Insert a <style> tag with some styles we'll use later.
-        element.innerHTML = `
-          <style>
-            #tree-container {
-              position: absolute;
-              left: 0px;
-              width: 100%;
-            }
-
-            .svgContainer {
-              display: block;
-                margin: auto;
-            }
-
-            .node {
-              cursor: pointer;
-            }
-
-            .node-rect {
-            }
-
-            .node-rect-closed {
-              stroke-width: 2px;
-              stroke: rgb(0,0,0);
-            }
-
-            .link {
-              fill: none;
-              stroke: lightsteelblue;
-              stroke-width: 2px;
-            }
-
-            .arrow {
-              fill: lightsteelblue;
-              stroke-width: 1px;
-            }
-
-            .wordwrap {
-              white-space: pre-wrap; /* CSS3 */
-              white-space: -moz-pre-wrap; /* Firefox */
-              white-space: -pre-wrap; /* Opera <7 */
-              white-space: -o-pre-wrap; /* Opera 7 */
-              word-wrap: break-word; /* IE */
-            }
-
-            .node-text {
-              font: 7px sans-serif;
-            }
-
-            p {
-              display: inline;
-            }
-
-            .textcolored {
-              color: orange;
-            }
-
-            a.exchangeName {
-              color: orange;
-            }
-
-            .toolTip {
-                position: absolute;
-                display: none;
-                width: auto;
-                height: auto;
-                background: none repeat scroll 0 0 white;
-                border: 0 none;
-                border-radius: 8px 8px 8px 8px;
-                box-shadow: -3px 3px 15px #888888;
-                color: black;
-                font: 12px sans-serif;
-                padding: 5px;
-                text-align: center;
-            }
-
-          </style>
-
-          <body>
-            <div class="tree-container">
-                <ct-visualization id="tree-container"></ct-visualization>
-                <script>
-                </script>
-            </div>
-          </body>
-        `;
-
+        element.innerHTML = "<h1>Ready to render!</h1>";
     },
     // Render in response to the data or settings changing
     updateAsync: function(data, element, config, queryResponse, details, done) {
@@ -194,6 +104,92 @@ looker.plugins.visualizations.add({
             });
             return;
         }
+        
+        element.innerHTML = `
+        <style>
+          #tree-container {
+            position: absolute;
+            left: 0px;
+            width: 100%;
+          }
+
+          .svgContainer {
+            display: block;
+              margin: auto;
+          }
+
+          .node {
+            cursor: pointer;
+          }
+
+          .node-rect {
+          }
+
+          .node-rect-closed {
+            stroke-width: 2px;
+            stroke: rgb(0,0,0);
+          }
+
+          .link {
+            fill: none;
+            stroke: lightsteelblue;
+            stroke-width: 2px;
+          }
+
+          .arrow {
+            fill: lightsteelblue;
+            stroke-width: 1px;
+          }
+
+          .wordwrap {
+            white-space: pre-wrap; /* CSS3 */
+            white-space: -moz-pre-wrap; /* Firefox */
+            white-space: -pre-wrap; /* Opera <7 */
+            white-space: -o-pre-wrap; /* Opera 7 */
+            word-wrap: break-word; /* IE */
+          }
+
+          .node-text {
+            font: 7px sans-serif;
+          }
+
+          p {
+            display: inline;
+          }
+
+          .textcolored {
+            color: orange;
+          }
+
+          a.exchangeName {
+            color: orange;
+          }
+
+          .toolTip {
+              position: absolute;
+              display: none;
+              width: auto;
+              height: auto;
+              background: none repeat scroll 0 0 white;
+              border: 0 none;
+              border-radius: 8px 8px 8px 8px;
+              box-shadow: -3px 3px 15px #888888;
+              color: black;
+              font: 14px sans-serif;
+              padding: 5px;
+              text-align: center;
+          }
+
+        </style>
+
+        <body>
+          <div class="tree-container">
+              <ct-visualization id="tree-container"></ct-visualization>
+              <script>
+              </script>
+          </div>
+        </body>
+      `;
 
         function treeBoxes(jsonData) {
 
@@ -209,8 +205,8 @@ looker.plugins.visualizations.add({
                 height = 400 - margin.top - margin.bottom;
 
             var rectNode = {
-                    width: 175,
-                    height: 70,
+                    width: 225,
+                    height: 100,
                     textMargin: 5
                 };
             var i = 0,
@@ -290,10 +286,10 @@ looker.plugins.visualizations.add({
                 });
 
                 if (config.missyElliott === 'vertical') {
-                    height = maxDepth * (rectNode.height + 60) + 30 - margin.right - margin.left;
-                    width = maxTreeWidth * (rectNode.width * 1.75) - margin.top - margin.bottom;
+                    height = maxDepth * (rectNode.height + 100) + 100 - margin.right - margin.left;
+                    width = maxTreeWidth * (rectNode.width * 1.75) - 200 - margin.top - margin.bottom;
                 } else {
-                    height = maxTreeWidth * (rectNode.height + 60) + 50 - margin.right - margin.left;
+                    height = maxTreeWidth * (rectNode.height + 100) + 100 - margin.right - margin.left;
                     width = maxDepth * (rectNode.width * 1.5) - margin.top - margin.bottom;
                 }
                 
@@ -423,8 +419,8 @@ looker.plugins.visualizations.add({
                     .append('xhtml').html(function(d) {
                         return '<div style="width: ' +
                             (rectNode.width - rectNode.textMargin * 2) + 'px; height: ' +
-                            (rectNode.height - rectNode.textMargin * 2) + 'px; font-size:0.65em; display: flex; justify-content: center; align-items: center; color:' + d.text_color + '" class="node-text wordwrap;"><center>' +
-                            '<b><u>' + d.measure + '</u></b><br><br>' +
+                            (rectNode.height - rectNode.textMargin * 2) + 'px; font-size:0.8em; display: flex; justify-content: center; align-items: center; color:' + d.text_color + '" class="node-text wordwrap;"><center>' +
+                            '<b>' + d.measure + '</b><br><br>' +
                             '<b>Value: </b>' + d.rendered_value +
 
                             // Show value_change dependent on config toggle
@@ -783,9 +779,13 @@ looker.plugins.visualizations.add({
 
             // render the value correctly
             if (value_number_format == 'gbp_0')
-                item.rendered_value = "£" + numberWithCommas(Math.round(item.value));
+                item.rendered_value = "Â£" + numberWithCommas(Math.round(item.value));
             if (value_number_format == 'gbp')
-                item.rendered_value = "£" + numberWithCommas(Math.round((item.value + Number.EPSILON) * 100) / 100);
+                item.rendered_value = "Â£" + numberWithCommas(Math.round((item.value + Number.EPSILON) * 100) / 100);
+            if (value_number_format == 'gbp_mill')
+                item.rendered_value = "Â£" + numberWithCommas(Math.round((item.value / 100000000 + Number.EPSILON) * 10000) / 100 + "M" );
+            if (value_number_format == 'gbp_thousand')
+                item.rendered_value = "Â£" + numberWithCommas(Math.round((item.value / 1000 + Number.EPSILON))+ "K" );
             if (value_number_format == 'decimal_2')
                 item.rendered_value = numberWithCommas(Math.round((item.value + Number.EPSILON) * 100) / 100);
             if (value_number_format == 'decimal_0')
